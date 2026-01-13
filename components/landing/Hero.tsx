@@ -68,7 +68,7 @@ export default function Hero() {
 
           <div className="overflow-hidden rounded-[32px] shadow-[0_30px_80px_rgba(0,0,0,0.15)] ring-1 ring-black/5">
             <Image
-              src="/hero.jpg"
+              src="/Hero.jpg"
               alt="RoutineForge preview"
               width={900}
               height={700}
