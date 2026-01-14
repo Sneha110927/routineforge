@@ -1,10 +1,11 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import AuthCard from '@/components/auth/AuthCard';
-import TextField from '@/components/auth/TextField';
-import { isValidEmail, minLen } from '@/lib/validators';
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import AuthCard from "@/components/auth/AuthCard";
+import TextField from "@/components/auth/TextField";
+import { isValidEmail, minLen } from "@/lib/validators";
 
 function MailIcon() {
   return (
@@ -24,9 +25,21 @@ function LockIcon() {
   );
 }
 
+type LoginSuccess = { ok: true; user: { email: string; fullName: string } };
+type LoginFail = { ok: false; message: string };
+type LoginResponse = LoginSuccess | LoginFail;
+
+function getMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  return "Something went wrong.";
+}
+
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [pwd, setPwd] = useState('');
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [pwd, setPwd] = useState("");
   const [showPwd, setShowPwd] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -34,8 +47,8 @@ export default function LoginPage() {
 
   const errors = useMemo(() => {
     const e: Record<string, string | null> = { email: null, pwd: null };
-    if (email && !isValidEmail(email)) e.email = 'Enter a valid email address.';
-    if (pwd && !minLen(pwd, 6)) e.pwd = 'Password must be at least 6 characters.';
+    if (email && !isValidEmail(email)) e.email = "Enter a valid email address.";
+    if (pwd && !minLen(pwd, 6)) e.pwd = "Password must be at least 6 characters.";
     return e;
   }, [email, pwd]);
 
@@ -48,11 +61,27 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      // TODO: connect to backend later
-      await new Promise((r) => setTimeout(r, 600));
-      window.location.href = '/';
-    } catch {
-      setServerError('Invalid email or password.');
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password: pwd }),
+      });
+
+      const data = (await res.json()) as LoginResponse;
+
+      if (!res.ok || !data.ok) {
+        const msg = "message" in data ? data.message : "Invalid email or password.";
+        throw new Error(msg);
+      }
+
+      // store minimal session
+      localStorage.setItem("rf_email", data.user.email);
+
+      // If user already completed onboarding, go dashboard later.
+      // For now always onboarding:
+      router.replace("/onboarding");
+    } catch (err: unknown) {
+      setServerError(getMessage(err));
     } finally {
       setLoading(false);
     }
@@ -67,11 +96,8 @@ export default function LoginPage() {
           footer={
             <>
               <div className="text-center text-sm text-zinc-600">
-                Don&apos;t have an account?{' '}
-                <Link
-                  href="/get-started"
-                  className="font-semibold text-emerald-600 hover:text-emerald-700"
-                >
+                Don&apos;t have an account?{" "}
+                <Link href="/get-started" className="font-semibold text-emerald-600 hover:text-emerald-700">
                   Sign up
                 </Link>
               </div>
@@ -103,7 +129,7 @@ export default function LoginPage() {
               value={pwd}
               onChange={setPwd}
               placeholder="••••••••"
-              type={showPwd ? 'text' : 'password'}
+              type={showPwd ? "text" : "password"}
               icon={<LockIcon />}
               error={errors.pwd}
               autoComplete="current-password"
@@ -113,7 +139,7 @@ export default function LoginPage() {
                   onClick={() => setShowPwd((s) => !s)}
                   className="text-xs font-semibold text-zinc-600 hover:text-zinc-900"
                 >
-                  {showPwd ? 'Hide' : 'Show'}
+                  {showPwd ? "Hide" : "Show"}
                 </button>
               }
             />
@@ -128,12 +154,12 @@ export default function LoginPage() {
               type="submit"
               disabled={!canSubmit}
               className={[
-                'mt-2 w-full rounded-xl px-5 py-3 text-sm font-semibold text-white',
-                'bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700',
-                'disabled:cursor-not-allowed disabled:bg-emerald-300',
-              ].join(' ')}
+                "mt-2 w-full rounded-xl px-5 py-3 text-sm font-semibold text-white",
+                "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
+                "disabled:cursor-not-allowed disabled:bg-emerald-300",
+              ].join(" ")}
             >
-              {loading ? 'Logging in...' : 'Log In'}
+              {loading ? "Logging in..." : "Log In"}
             </button>
           </form>
         </AuthCard>
