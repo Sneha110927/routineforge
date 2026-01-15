@@ -9,8 +9,18 @@ import { minLen } from "@/lib/validators";
 
 function LockIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="stroke-current">
-      <path d="M7 11V8a5 5 0 0 1 10 0v3" strokeWidth="2" strokeLinecap="round" />
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      className="stroke-current"
+    >
+      <path
+        d="M7 11V8a5 5 0 0 1 10 0v3"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
       <path d="M6 11h12v10H6V11Z" strokeWidth="2" strokeLinejoin="round" />
     </svg>
   );
@@ -41,42 +51,52 @@ export default function ResetPasswordClient() {
   const errors = useMemo(() => {
     const e: Record<string, string | null> = { pwd: null, confirm: null };
 
-    if (pwd && !minLen(pwd, 6)) e.pwd = "Password must be at least 6 characters.";
+    if (pwd && !minLen(pwd, 6))
+      e.pwd = "Password must be at least 6 characters.";
     if (confirm && confirm !== pwd) e.confirm = "Passwords do not match.";
 
     return e;
   }, [pwd, confirm]);
 
-  const canSubmit = token.length > 0 && minLen(pwd, 6) && confirm === pwd && !loading;
+  const canSubmit =
+    token.length > 0 && minLen(pwd, 6) && confirm === pwd && !loading;
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg(null);
-    if (!canSubmit) return;
+async function onSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setMsg(null);
+  if (!canSubmit) return;
 
-    setLoading(true);
+  setLoading(true);
+  try {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, password: pwd }),
+    });
+
+    const text = await res.text();
+
+    let data: Resp;
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, password: pwd }),
-      });
-
-      const data = (await res.json()) as Resp;
-
-      if (!res.ok || !data.ok) {
-        const text = "message" in data ? data.message : "Reset failed";
-        throw new Error(text);
-      }
-
-      setMsg("✅ Password updated. Redirecting to login…");
-      setTimeout(() => router.replace("/login"), 800);
-    } catch (e: unknown) {
-      setMsg(getMessage(e));
-    } finally {
-      setLoading(false);
+      data = text ? (JSON.parse(text) as Resp) : { ok: false, message: "Empty response from server" };
+    } catch {
+      data = { ok: false, message: "Invalid server response" };
     }
+
+    if (!res.ok || !data.ok) {
+      const msgText = "message" in data ? data.message : "Reset failed";
+      throw new Error(msgText);
+    }
+
+    setMsg("✅ Password updated. Redirecting to login…");
+    setTimeout(() => router.replace("/login"), 800);
+  } catch (e: unknown) {
+    setMsg(getMessage(e));
+  } finally {
+    setLoading(false);
   }
+}
+
 
   return (
     <div className="min-h-screen bg-white px-6 py-14">
@@ -88,7 +108,10 @@ export default function ResetPasswordClient() {
             footer={
               <div className="text-center text-sm text-zinc-600">
                 Back to{" "}
-                <Link href="/login" className="font-semibold text-emerald-600 hover:text-emerald-700">
+                <Link
+                  href="/login"
+                  className="font-semibold text-emerald-600 hover:text-emerald-700"
+                >
                   Log in
                 </Link>
               </div>

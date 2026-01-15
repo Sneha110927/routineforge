@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useActionState } from "react";
+import React, { useEffect, useActionState, startTransition } from "react";
 import Link from "next/link";
 
 type RoutineBlock = {
@@ -84,11 +84,13 @@ function TopBar() {
 export default function RoutineClient() {
   const [view, runLoad] = useActionState(loadRoutineAction, { status: "boot" } as ViewState);
 
-  useEffect(() => {
-    // ✅ localStorage only here (never during prerender)
-    const email = localStorage.getItem("rf_email");
+ useEffect(() => {
+  const email = localStorage.getItem("rf_email");
+  startTransition(() => {
     runLoad({ email });
-  }, [runLoad]);
+  });
+}, [runLoad]);
+
 
   return (
     <main className="min-h-screen bg-white">
@@ -184,15 +186,17 @@ function RoutineTimeline({ blocks }: { blocks: RoutineBlock[] }) {
             })}
           </div>
 
-          <div className="mt-14 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
-            <p className="text-sm font-semibold text-slate-900">💡 Pro Tips</p>
-            <ul className="mt-4 space-y-2 text-sm text-slate-700">
-              <li>• Try to maintain consistent wake and sleep times, even on weekends</li>
-              <li>• Take short 5-minute breaks every hour during work blocks</li>
-              <li>• Avoid screens 30 minutes before bedtime for better sleep quality</li>
-              <li>• Stay hydrated throughout the day - aim for 8 glasses of water</li>
-            </ul>
-          </div>
+      <div className="mt-14 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+  <p className="text-sm font-semibold text-slate-900">💡 Pro Tips</p>
+
+  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700">
+    <li>Try to maintain consistent wake and sleep times, even on weekends</li>
+    <li>Take short 5-minute breaks every hour during work blocks</li>
+    <li>Avoid screens 30 minutes before bedtime for better sleep quality</li>
+    <li>Stay hydrated throughout the day - aim for 8 glasses of water</li>
+  </ul>
+</div>
+
         </div>
       </div>
 

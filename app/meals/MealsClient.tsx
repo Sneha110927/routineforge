@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useActionState } from "react";
+import React, { useEffect, useActionState, startTransition } from "react";
 import Link from "next/link";
 
 type MealItem = { name: string; desc: string; kcal: number };
@@ -12,7 +12,6 @@ type PlanResponse =
 type ViewState =
   | { status: "boot" }
   | { status: "noauth" }
-  | { status: "loading"; email: string }
   | { status: "error"; message: string }
   | { status: "ready"; meals: MealItem[] };
 
@@ -25,7 +24,14 @@ async function loadMealsAction(
 
   try {
     const res = await fetch(`/api/plan?email=${encodeURIComponent(email)}`);
-    const json = (await res.json()) as PlanResponse;
+    const text = await res.text();
+
+    let json: PlanResponse;
+    try {
+      json = text ? (JSON.parse(text) as PlanResponse) : { ok: false, message: "Empty response" };
+    } catch {
+      json = { ok: false, message: "Invalid server response" };
+    }
 
     if (!res.ok || !json.ok) {
       const msg = "message" in json ? json.message : "Failed to load meals.";
@@ -97,7 +103,9 @@ export default function MealsClient() {
 
   useEffect(() => {
     const email = localStorage.getItem("rf_email");
-    runLoad({ email });
+    startTransition(() => {
+      runLoad({ email });
+    });
   }, [runLoad]);
 
   return (
@@ -120,7 +128,7 @@ export default function MealsClient() {
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
             {view.message}
           </div>
-        ) : view.status === "ready" ? (
+        ) : (
           <>
             <div className="text-center">
               <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Your Meal Plan</h1>
@@ -146,11 +154,6 @@ export default function MealsClient() {
               ?
             </div>
           </>
-        ) : (
-          // view.status === "loading" (optional state if you want to add it later)
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
-            Loading meals…
-          </div>
         )}
       </div>
     </main>
