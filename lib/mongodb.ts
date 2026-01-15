@@ -24,7 +24,8 @@ export async function connectMongo(): Promise<typeof mongoose> {
 
   if (!cached.promise) {
     const uri = getMongoUri();
-    cached.promise = mongoose.connect(uri, { dbName: "routineforge" });
+    // ✅ do not pass dbName here; use it from the URI
+    cached.promise = mongoose.connect(uri);
   }
 
   cached.conn = await cached.promise;

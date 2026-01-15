@@ -105,9 +105,7 @@ export default function SignUpPage() {
         throw new Error(msg);
       }
 
-      // minimal session for now (used by onboarding + dashboard plan api)
       localStorage.setItem("rf_email", data.user.email);
-
       router.replace("/onboarding");
     } catch (err: unknown) {
       setServerError(getMessage(err));
@@ -117,116 +115,119 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white px-6 py-10">
-      <div className="mx-auto flex max-w-6xl items-start justify-center pt-6">
-        <AuthCard
-          title="Create your account"
-          subtitle="Start building your personalized routine"
-          footer={
-            <>
-              <div className="text-center text-sm text-zinc-600">
-                Already have an account?{" "}
-                <Link href="/login" className="font-semibold text-emerald-600 hover:text-emerald-700">
-                  Log in
-                </Link>
-              </div>
+    <div className="min-h-screen bg-white px-6 py-14">
+      <div className="mx-auto flex max-w-6xl items-center justify-center">
+        {/* Compact width like your login (center card) */}
+        <div className="w-full max-w-md">
+          <AuthCard
+            title="Create your account"
+            subtitle="Start building your personalized routine"
+            footer={
+              <>
+                <div className="text-center text-sm text-zinc-600">
+                  Already have an account?{" "}
+                  <Link href="/login" className="font-semibold text-emerald-600 hover:text-emerald-700">
+                    Log in
+                  </Link>
+                </div>
 
-              <div className="my-8 border-t border-zinc-200" />
+                <div className="my-10 border-t border-zinc-200" />
 
-              <p className="text-center text-xs leading-5 text-zinc-500">
-                By creating an account, you agree to our{" "}
-                <Link href="#" className="underline underline-offset-2 hover:text-zinc-700">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="#" className="underline underline-offset-2 hover:text-zinc-700">
-                  Privacy Policy
-                </Link>
-              </p>
-            </>
-          }
-        >
-          <form onSubmit={onSubmit} className="space-y-6">
-            <TextField
-              label="Full Name"
-              value={fullName}
-              onChange={setFullName}
-              placeholder="John Doe"
-              icon={<UserIcon />}
-              error={errors.fullName}
-              autoComplete="name"
-            />
+                <p className="text-center text-xs leading-5 text-zinc-500">
+                  By creating an account, you agree to our{" "}
+                  <Link href="#" className="underline underline-offset-2 hover:text-zinc-700">
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link href="#" className="underline underline-offset-2 hover:text-zinc-700">
+                    Privacy Policy
+                  </Link>
+                </p>
+              </>
+            }
+          >
+            <form onSubmit={onSubmit} className="space-y-6">
+              <TextField
+                label="Full Name"
+                value={fullName}
+                onChange={setFullName}
+                placeholder="John Doe"
+                icon={<UserIcon />}
+                error={errors.fullName}
+                autoComplete="name"
+              />
 
-            <TextField
-              label="Email"
-              value={email}
-              onChange={setEmail}
-              placeholder="you@example.com"
-              type="email"
-              icon={<MailIcon />}
-              error={errors.email}
-              autoComplete="email"
-            />
+              <TextField
+                label="Email"
+                value={email}
+                onChange={setEmail}
+                placeholder="you@example.com"
+                type="email"
+                icon={<MailIcon />}
+                error={errors.email}
+                autoComplete="email"
+              />
 
-            <TextField
-              label="Password"
-              value={pwd}
-              onChange={setPwd}
-              placeholder="••••••••"
-              type={showPwd ? "text" : "password"}
-              icon={<LockIcon />}
-              error={errors.pwd}
-              autoComplete="new-password"
-              right={
-                <button
-                  type="button"
-                  onClick={() => setShowPwd((s) => !s)}
-                  className="text-xs font-semibold text-zinc-600 hover:text-zinc-900"
-                >
-                  {showPwd ? "Hide" : "Show"}
-                </button>
-              }
-            />
+              <TextField
+                label="Password"
+                value={pwd}
+                onChange={setPwd}
+                placeholder="••••••••"
+                type={showPwd ? "text" : "password"}
+                icon={<LockIcon />}
+                error={errors.pwd}
+                autoComplete="new-password"
+                right={
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd((s) => !s)}
+                    className="text-xs font-semibold text-zinc-600 hover:text-zinc-900"
+                  >
+                    {showPwd ? "Hide" : "Show"}
+                  </button>
+                }
+              />
 
-            <TextField
-              label="Confirm Password"
-              value={confirm}
-              onChange={setConfirm}
-              placeholder="••••••••"
-              type={showConfirm ? "text" : "password"}
-              icon={<LockIcon />}
-              error={errors.confirm}
-              autoComplete="new-password"
-              right={
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((s) => !s)}
-                  className="text-xs font-semibold text-zinc-600 hover:text-zinc-900"
-                >
-                  {showConfirm ? "Hide" : "Show"}
-                </button>
-              }
-            />
+              <TextField
+                label="Confirm Password"
+                value={confirm}
+                onChange={setConfirm}
+                placeholder="••••••••"
+                type={showConfirm ? "text" : "password"}
+                icon={<LockIcon />}
+                error={errors.confirm}
+                autoComplete="new-password"
+                right={
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((s) => !s)}
+                    className="text-xs font-semibold text-zinc-600 hover:text-zinc-900"
+                  >
+                    {showConfirm ? "Hide" : "Show"}
+                  </button>
+                }
+              />
 
-            {serverError ? (
-              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {serverError}
-              </div>
-            ) : null}
+              {serverError ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {serverError}
+                </div>
+              ) : null}
 
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className={[
-                "mt-2 w-full rounded-xl px-5 py-4 text-sm font-semibold text-white",
-                "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
-                "disabled:cursor-not-allowed disabled:bg-emerald-300",
-              ].join(" ")}
-            >
-              {loading ? "Creating..." : "Create Account"}
-            </button>
-          </form>
-        </AuthCard>
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className={[
+                  "mt-2 w-full rounded-xl px-5 py-3 text-sm font-semibold text-white",
+                  "bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700",
+                  "disabled:cursor-not-allowed disabled:bg-emerald-300",
+                ].join(" ")}
+              >
+                {loading ? "Creating..." : "Create Account"}
+              </button>
+            </form>
+          </AuthCard>
+        </div>
       </div>
     </div>
   );

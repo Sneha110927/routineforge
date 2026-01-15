@@ -2,6 +2,17 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Calendar,
+  UtensilsCrossed,
+  Dumbbell,
+  LineChart,
+  Settings,
+  CheckCircle2,
+  Clock3,
+  Flame,
+} from "lucide-react";
 
 type RoutineItem = { time: string; title: string; icon: string };
 type MealItem = { name: string; desc: string; kcal: number };
@@ -51,6 +62,7 @@ function SmallIcon({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+
 function ActionCard({
   href,
   icon,
@@ -97,6 +109,37 @@ function ActionCard({
   );
 }
 
+function NavItem({
+  href,
+  label,
+  Icon,
+}: {
+  href: string;
+  label: string;
+  Icon: React.ComponentType<{ size?: number; className?: string }>;
+}) {
+  const pathname = usePathname();
+  const active = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      className={[
+        "flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition",
+        active
+          ? "bg-emerald-50 text-emerald-700"
+          : "text-slate-700 hover:bg-slate-50 hover:text-slate-900",
+      ].join(" ")}
+    >
+      <Icon
+        size={16}
+        className={active ? "text-emerald-700" : "text-slate-600"}
+      />
+      <span>{label}</span>
+    </Link>
+  );
+}
+
 function TopNav() {
   return (
     <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
@@ -110,20 +153,18 @@ function TopNav() {
           </span>
         </div>
 
-        <div className="hidden items-center gap-6 text-sm text-slate-700 md:flex">
-          <button className="flex items-center gap-2 hover:text-slate-900">
-            🕒 <span className="font-medium">Routine</span>
-          </button>
-          <button className="flex items-center gap-2 hover:text-slate-900">
-            🍽️ <span className="font-medium">Meals</span>
-          </button>
-          <button className="flex items-center gap-2 hover:text-slate-900">
-            🏋️ <span className="font-medium">Workout</span>
-          </button>
-          <button className="flex items-center gap-2 hover:text-slate-900">
-            📈 <span className="font-medium">Reports</span>
-          </button>
-          <button className="hover:text-slate-900">⚙️</button>
+        <div className="hidden items-center gap-2 md:flex">
+          <NavItem href="/routine" label="Routine" Icon={Calendar} />
+          <NavItem href="/meals" label="Meals" Icon={UtensilsCrossed} />
+          <NavItem href="/workout" label="Workout" Icon={Dumbbell} />
+          <NavItem href="/reports" label="Reports" Icon={LineChart} />
+          <Link
+            href="/settings"
+            className="ml-1 grid h-9 w-9 place-items-center rounded-xl text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
+            aria-label="Settings"
+          >
+            <Settings size={16} className="text-slate-600" />
+          </Link>
         </div>
       </div>
     </div>
@@ -178,7 +219,7 @@ export default function DashboardPage() {
                 {greeting}, {data.greetingName}
               </h1>
               <p className="mt-1 text-sm text-slate-600">
-                <p>Here&#39;s your overview for today</p>
+                Here&#39;s your overview for today
               </p>
             </div>
 
@@ -187,7 +228,7 @@ export default function DashboardPage() {
               <Card className="bg-gradient-to-r from-emerald-50 to-emerald-100">
                 <div className="flex items-center gap-4 p-5">
                   <div className="grid h-12 w-12 place-items-center rounded-full bg-emerald-600 text-white">
-                    🕒
+                    <Clock3 size={18} />
                   </div>
                   <div>
                     <p className="text-xs text-slate-600">Current Block</p>
@@ -204,7 +245,7 @@ export default function DashboardPage() {
               <Card className="bg-gradient-to-r from-emerald-50 to-emerald-100">
                 <div className="flex items-center gap-4 p-5">
                   <div className="grid h-12 w-12 place-items-center rounded-full bg-emerald-600 text-white">
-                    🔥
+                    <Flame size={18} />
                   </div>
                   <div>
                     <p className="text-xs text-slate-600">Current Streak</p>
@@ -217,29 +258,28 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick action cards */}
-
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
               <ActionCard
                 href="/routine"
-                icon="🗓️"
+                icon={<Calendar size={18} />}
                 title="Daily Routine"
-                desc="View today's schedule"
+                desc="View today&#39;s schedule"
               />
               <ActionCard
                 href="/meals"
-                icon="🍽️"
+                icon={<UtensilsCrossed size={18} />}
                 title="Meal Plan"
                 desc="Check your meals"
               />
               <ActionCard
                 href="/workout"
-                icon="🏋️"
+                icon={<Dumbbell size={18} />}
                 title="Workout"
                 desc="View exercise plan"
               />
               <ActionCard
                 href="/tracker"
-                icon="✅"
+                icon={<CheckCircle2 size={18} />}
                 title="Log Today"
                 desc="Track your progress"
               />
@@ -253,9 +293,12 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold text-slate-900">
                     Today&apos;s Routine
                   </p>
-                  <button className="text-xs font-semibold text-slate-900 hover:underline">
+                  <Link
+                    href="/routine"
+                    className="text-xs font-semibold text-slate-900 hover:underline"
+                  >
                     View All
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="px-5 pb-5">
@@ -284,9 +327,12 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold text-slate-900">
                     Today&apos;s Meals
                   </p>
-                  <button className="text-xs font-semibold text-slate-900 hover:underline">
+                  <Link
+                    href="/meals"
+                    className="text-xs font-semibold text-slate-900 hover:underline"
+                  >
                     View All
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="px-5 pb-5 space-y-3">
@@ -313,9 +359,12 @@ export default function DashboardPage() {
                   <p className="text-sm font-semibold text-slate-900">
                     Today&apos;s Workout
                   </p>
-                  <button className="text-xs font-semibold text-slate-900 hover:underline">
+                  <Link
+                    href="/workout"
+                    className="text-xs font-semibold text-slate-900 hover:underline"
+                  >
                     View All
-                  </button>
+                  </Link>
                 </div>
 
                 <div className="px-5 pb-5">
@@ -359,9 +408,12 @@ export default function DashboardPage() {
                 Don&apos;t forget to log your progress tonight to keep your
                 streak going!
               </p>
-              <button className="mt-5 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700">
+              <Link
+                href="/tracker"
+                className="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
                 Log Today&apos;s Progress
-              </button>
+              </Link>
             </div>
 
             <div className="fixed bottom-6 right-6 grid h-10 w-10 place-items-center rounded-full bg-slate-900 text-white shadow-lg">

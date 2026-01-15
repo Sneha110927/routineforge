@@ -52,7 +52,7 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-slate-900">{label}</label>
+      <label className="text-sm font-semibold text-slate-900">{label}</label>
       {children}
     </div>
   );
@@ -63,7 +63,7 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "h-10 w-full rounded-lg bg-slate-100 px-3 text-sm text-slate-900 outline-none ring-0",
+        "h-11 w-full rounded-xl bg-slate-100 px-4 text-sm text-slate-900 outline-none ring-0",
         "placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-emerald-200",
         props.className
       )}
@@ -76,11 +76,154 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={cn(
-        "h-10 w-full rounded-lg bg-slate-100 px-3 text-sm text-slate-900 outline-none",
+        "h-11 w-full rounded-xl bg-slate-100 px-4 text-sm text-slate-900 outline-none",
         "focus:bg-white focus:ring-2 focus:ring-emerald-200",
         props.className
       )}
     />
+  );
+}
+
+function clamp(n: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, n));
+}
+
+function parseNumberOrDefault(v: string, def: number): number {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : def;
+}
+
+/**
+ * StepperInput: custom +/- buttons like your screenshot (NOT browser number spinner).
+ * - input is type="text" with numeric-only filter
+ * - right side: two square buttons
+ */
+function StepperInput({
+  value,
+  onChange,
+  placeholder,
+  min,
+  max,
+  step = 1,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  min: number;
+  max: number;
+  step?: number;
+}) {
+  const num = Number(value);
+  const base = Number.isFinite(num) ? num : min;
+
+  function clamp(n: number): number {
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function dec() {
+    onChange(String(clamp(base - step)));
+  }
+
+  function inc() {
+    onChange(String(clamp(base + step)));
+  }
+
+  return (
+    <div className="relative">
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw.trim() === "") {
+            onChange("");
+            return;
+          }
+          const cleaned = raw.replace(/[^\d]/g, "");
+          onChange(cleaned);
+        }}
+        placeholder={placeholder}
+        inputMode="numeric"
+        className="pr-14"
+      />
+
+      {/* Arrow buttons like native spinner */}
+      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+          <button
+            type="button"
+            onClick={inc}
+            className="grid h-[18px] w-9 place-items-center border-b border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-[0.99]"
+            aria-label="Increase"
+          >
+            <span className="text-[10px] leading-none">▲</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={dec}
+            className="grid h-[18px] w-9 place-items-center text-slate-700 hover:bg-slate-50 active:scale-[0.99]"
+            aria-label="Decrease"
+          >
+            <span className="text-[10px] leading-none">▼</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function PillChoice({
+  title,
+  subtitle,
+  active,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "w-full rounded-xl border px-4 py-4 text-left transition",
+        active
+          ? "border-emerald-600 bg-emerald-50"
+          : "border-slate-200 bg-white hover:bg-slate-50"
+      )}
+    >
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+    </button>
+  );
+}
+
+function DietTile({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "w-full rounded-xl border px-4 py-4 text-center text-sm font-semibold transition",
+        active
+          ? "border-emerald-600 bg-emerald-50 text-emerald-700"
+          : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -89,37 +232,22 @@ function parseGender(v: string): Gender {
   if (v === "male" || v === "female" || v === "other" || v === "prefer_not") return v;
   return "";
 }
-
-function parseActivity(v: string): Activity {
-  if (v === "low" || v === "medium" || v === "high") return v;
-  return "low";
-}
-
-function parseDietPref(v: string): DietPref {
-  if (v === "veg" || v === "nonveg" || v === "eggetarian" || v === "vegan") return v;
-  return "veg";
-}
-
 function parseMealsPerDay(v: string): MealsPerDay {
   if (v === "3" || v === "4" || v === "5") return v;
   return "4";
 }
-
 function parseGoal(v: string): Goal {
   if (v === "muscle_gain" || v === "weight_gain" || v === "fat_loss" || v === "maintenance") return v;
   return "muscle_gain";
 }
-
 function parseExperience(v: string): Experience {
   if (v === "beginner" || v === "intermediate" || v === "advanced") return v;
   return "beginner";
 }
-
 function parseLocation(v: string): Location {
   if (v === "home" || v === "gym") return v;
   return "home";
 }
-
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
@@ -131,19 +259,19 @@ export default function OnboardingWizard() {
   const [step, setStep] = useState(0);
 
   const [form, setForm] = useState<FormState>({
-    heightCm: "",
-    weightKg: "",
-    age: "",
+    heightCm: "170",
+    weightKg: "70",
+    age: "30",
     gender: "",
 
-    profession: "Software Developer",
+    profession: "Select your profession ",
     workStart: "10:30",
     workEnd: "20:00",
     activityLevel: "low",
 
     dietPreference: "veg",
     allergies: "",
-    mealsPerDay: "4",
+    mealsPerDay: "3",
 
     goal: "muscle_gain",
     experience: "beginner",
@@ -151,10 +279,7 @@ export default function OnboardingWizard() {
     workoutMinutesPerDay: "35",
   });
 
-  const progress = useMemo(() => {
-    return Math.round(((step + 1) / steps.length) * 100);
-  }, [step]);
-
+  const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const canGoBack = step > 0;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -175,7 +300,7 @@ export default function OnboardingWizard() {
       return null;
     }
     if (step === 2) {
-      if (!form.dietPreference) return "Diet preference is required";
+      if (!form.dietPreference) return "Diet type is required";
       if (!form.mealsPerDay) return "Meals per day is required";
       return null;
     }
@@ -186,55 +311,70 @@ export default function OnboardingWizard() {
     return null;
   }
 
- async function onNext() {
-  const err = validateCurrentStep();
-  if (err) {
-    alert(err);
-    return;
-  }
-
-  if (step < steps.length - 1) {
-    setStep((s) => s + 1);
-    return;
-  }
-
-  // ✅ get email saved during login/signup
-  const userEmail = localStorage.getItem("rf_email") ?? "";
-
-  if (!userEmail) {
-    alert("No login found. Please log in again.");
-    router.replace("/login");
-    return;
-  }
-
-  try {
-    const res = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userEmail, ...form }),
-    });
-
-    const data = (await res.json()) as unknown;
-
-    if (!res.ok) {
-      const msg =
-        typeof data === "object" && data !== null && "message" in data
-          ? String((data as { message: unknown }).message)
-          : "Failed to save profile";
-      throw new Error(msg);
+  async function onNext() {
+    const err = validateCurrentStep();
+    if (err) {
+      alert(err);
+      return;
     }
 
-    router.replace("/dashboard");
-  } catch (e: unknown) {
-    alert(getErrorMessage(e));
-  }
-}
+    if (step < steps.length - 1) {
+      setStep((s) => s + 1);
+      return;
+    }
 
+    const userEmail = localStorage.getItem("rf_email") ?? "";
+    if (!userEmail) {
+      alert("No login found. Please log in again.");
+      router.replace("/login");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userEmail, ...form }),
+      });
+
+      const data = (await res.json()) as unknown;
+
+      if (!res.ok) {
+        const msg =
+          typeof data === "object" && data !== null && "message" in data
+            ? String((data as { message: unknown }).message)
+            : "Failed to save profile";
+        throw new Error(msg);
+      }
+
+      router.replace("/dashboard");
+    } catch (e: unknown) {
+      alert(getErrorMessage(e));
+    }
+  }
 
   function onBack() {
     if (!canGoBack) return;
     setStep((s) => s - 1);
   }
+
+  const heading =
+    step === 0
+      ? "Let's start with the basics"
+      : step === 1
+      ? "Tell us about your lifestyle"
+      : step === 2
+      ? "Let's plan your nutrition"
+      : "Set your workout preferences";
+
+  const subheading =
+    step === 0
+      ? "This helps us personalize your routine and nutrition plan"
+      : step === 1
+      ? "We'll build a routine that fits your schedule"
+      : step === 2
+      ? "We'll create meal plans that match your preferences"
+      : "We’ll match workouts to your goal, experience, and available time.";
 
   return (
     <div className="min-h-screen">
@@ -266,56 +406,51 @@ export default function OnboardingWizard() {
 
       {/* Center content */}
       <div className="grid place-items-center px-4 py-14">
-        <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="px-8 py-7">
-            <h2 className="text-2xl font-semibold text-slate-900">
-              {step === 0 && "Let's start with the basics"}
-              {step === 1 && "Tell us about your day"}
-              {step === 2 && "Set your meal preferences"}
-              {step === 3 && "Set your workout preferences"}
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              {step === 0 && "This helps us personalize your routine and nutrition plan."}
-              {step === 1 && "We’ll align your schedule to your working hours and energy levels."}
-              {step === 2 && "Diet preference and allergies help us generate safe, realistic meals."}
-              {step === 3 && "We’ll match workouts to your goal, experience, and available time."}
-            </p>
+        <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="px-10 py-9">
+            <h2 className="text-3xl font-semibold tracking-tight text-slate-900">{heading}</h2>
+            <p className="mt-2 text-sm text-slate-600">{subheading}</p>
 
-            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+            {/* fields container */}
+            <div className="mt-8 grid grid-cols-1 gap-6">
+              {/* STEP 0 */}
               {step === 0 && (
-                <>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <Field label="Height (cm)">
-                    <Input
-                      placeholder="170"
-                      inputMode="numeric"
+                    <StepperInput
                       value={form.heightCm}
-                      onChange={(e) => update("heightCm", e.target.value)}
+                      onChange={(v) => update("heightCm", v)}
+                      placeholder="170"
+                      min={120}
+                      max={230}
+                      step={1}
                     />
                   </Field>
 
                   <Field label="Weight (kg)">
-                    <Input
-                      placeholder="70"
-                      inputMode="numeric"
+                    <StepperInput
                       value={form.weightKg}
-                      onChange={(e) => update("weightKg", e.target.value)}
+                      onChange={(v) => update("weightKg", v)}
+                      placeholder="70"
+                      min={30}
+                      max={200}
+                      step={1}
                     />
                   </Field>
 
                   <Field label="Age">
-                    <Input
-                      placeholder="30"
-                      inputMode="numeric"
+                    <StepperInput
                       value={form.age}
-                      onChange={(e) => update("age", e.target.value)}
+                      onChange={(v) => update("age", v)}
+                      placeholder="30"
+                      min={10}
+                      max={90}
+                      step={1}
                     />
                   </Field>
 
                   <Field label="Gender (Optional)">
-                    <Select
-                      value={form.gender}
-                      onChange={(e) => update("gender", parseGender(e.target.value))}
-                    >
+                    <Select value={form.gender} onChange={(e) => update("gender", parseGender(e.target.value))}>
                       <option value="">Select gender</option>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
@@ -323,95 +458,103 @@ export default function OnboardingWizard() {
                       <option value="prefer_not">Prefer not to say</option>
                     </Select>
                   </Field>
-                </>
+                </div>
               )}
 
+              {/* STEP 1 */}
               {step === 1 && (
-                <>
-                  <Field label="Profession">
-                    <Input
-                      placeholder="Software Developer"
-                      value={form.profession}
-                      onChange={(e) => update("profession", e.target.value)}
-                    />
-                  </Field>
-
-                  <Field label="Activity Level">
-                    <Select
-                      value={form.activityLevel}
-                      onChange={(e) => update("activityLevel", parseActivity(e.target.value))}
-                    >
-                      <option value="low">Low (mostly desk)</option>
-                      <option value="medium">Medium (some movement)</option>
-                      <option value="high">High (active job)</option>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">Profession</label>
+                    <Select value={form.profession} onChange={(e) => update("profession", e.target.value)}>
+                      <option value="">Select your profession</option>
+                      <option value="Software Developer">Software Developer</option>
+                      <option value="Designer">Designer</option>
+                      <option value="Manager">Manager</option>
+                      <option value="Consultant">Consultant</option>
+                      <option value="Entrepreneur">Entrepreneur</option>
+                      <option value="Student">Student</option>
+                      <option value="Other">Other</option>
                     </Select>
-                  </Field>
+                  </div>
 
-                  <Field label="Work start time">
-                    <Input
-                      type="time"
-                      value={form.workStart}
-                      onChange={(e) => update("workStart", e.target.value)}
-                    />
-                  </Field>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <Field label="Work start time">
+                      <Input type="time" value={form.workStart} onChange={(e) => update("workStart", e.target.value)} />
+                    </Field>
 
-                  <Field label="Work end time">
-                    <Input
-                      type="time"
-                      value={form.workEnd}
-                      onChange={(e) => update("workEnd", e.target.value)}
-                    />
-                  </Field>
-                </>
+                    <Field label="Work end time">
+                      <Input type="time" value={form.workEnd} onChange={(e) => update("workEnd", e.target.value)} />
+                    </Field>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">Current Activity Level</label>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <PillChoice title="Low" subtitle="Mostly sedentary" active={form.activityLevel === "low"} onClick={() => update("activityLevel", "low")} />
+                      <PillChoice title="Medium" subtitle="Light exercise" active={form.activityLevel === "medium"} onClick={() => update("activityLevel", "medium")} />
+                      <PillChoice title="High" subtitle="Very active" active={form.activityLevel === "high"} onClick={() => update("activityLevel", "high")} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">Sleep Schedule Preference</label>
+                    <Select defaultValue="">
+                      <option value="">Select sleep schedule</option>
+                      <option value="Early Bird (sleep by 10 PM)">Early Bird (sleep by 10 PM)</option>
+                      <option value="Moderate (sleep by 11-12 PM)">Moderate (sleep by 11-12 PM)</option>
+                      <option value="Night Owl (sleep after 12 AM)">Night Owl (sleep after 12 AM)</option>
+                    </Select>
+                  </div>
+                </div>
               )}
 
+              {/* STEP 2 */}
               {step === 2 && (
-                <>
-                  <Field label="Diet preference">
-                    <Select
-                      value={form.dietPreference}
-                      onChange={(e) => update("dietPreference", parseDietPref(e.target.value))}
-                    >
-                      <option value="veg">Vegetarian</option>
-                      <option value="eggetarian">Eggetarian</option>
-                      <option value="vegan">Vegan</option>
-                      <option value="nonveg">Non-veg</option>
-                    </Select>
-                  </Field>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">Diet Type</label>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <DietTile label="Vegetarian" active={form.dietPreference === "veg"} onClick={() => update("dietPreference", "veg")} />
+                      <DietTile label="Non-Vegetarian" active={form.dietPreference === "nonveg"} onClick={() => update("dietPreference", "nonveg")} />
+                      <DietTile label="Eggetarian" active={form.dietPreference === "eggetarian"} onClick={() => update("dietPreference", "eggetarian")} />
+                      <DietTile label="Vegan" active={form.dietPreference === "vegan"} onClick={() => update("dietPreference", "vegan")} />
+                    </div>
+                  </div>
 
-                  <Field label="Meals per day">
-                    <Select
-                      value={form.mealsPerDay}
-                      onChange={(e) => update("mealsPerDay", parseMealsPerDay(e.target.value))}
-                    >
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">Food Allergies or Restrictions</label>
+                    <div className="flex gap-3">
+                      <Input
+                        placeholder="e.g., peanuts, dairy"
+                        value={form.allergies}
+                        onChange={(e) => update("allergies", e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 active:scale-[0.99]"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-900">Meals per Day</label>
+                    <Select value={form.mealsPerDay} onChange={(e) => update("mealsPerDay", parseMealsPerDay(e.target.value))}>
                       <option value="3">3 meals</option>
                       <option value="4">4 meals</option>
                       <option value="5">5 meals</option>
                     </Select>
-                  </Field>
-
-                  <div className="sm:col-span-2">
-                    <Field label="Allergies / Restrictions (optional)">
-                      <Input
-                        placeholder="e.g., lactose, peanuts, gluten"
-                        value={form.allergies}
-                        onChange={(e) => update("allergies", e.target.value)}
-                      />
-                      <p className="mt-1 text-xs text-slate-500">
-                        Use commas to separate multiple items.
-                      </p>
-                    </Field>
                   </div>
-                </>
+                </div>
               )}
 
+              {/* STEP 3 */}
               {step === 3 && (
-                <>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <Field label="Goal">
-                    <Select
-                      value={form.goal}
-                      onChange={(e) => update("goal", parseGoal(e.target.value))}
-                    >
+                    <Select value={form.goal} onChange={(e) => update("goal", parseGoal(e.target.value))}>
                       <option value="muscle_gain">Muscle gain</option>
                       <option value="weight_gain">Weight gain</option>
                       <option value="fat_loss">Fat loss</option>
@@ -420,10 +563,7 @@ export default function OnboardingWizard() {
                   </Field>
 
                   <Field label="Experience">
-                    <Select
-                      value={form.experience}
-                      onChange={(e) => update("experience", parseExperience(e.target.value))}
-                    >
+                    <Select value={form.experience} onChange={(e) => update("experience", parseExperience(e.target.value))}>
                       <option value="beginner">Beginner</option>
                       <option value="intermediate">Intermediate</option>
                       <option value="advanced">Advanced</option>
@@ -431,37 +571,34 @@ export default function OnboardingWizard() {
                   </Field>
 
                   <Field label="Workout location">
-                    <Select
-                      value={form.workoutLocation}
-                      onChange={(e) => update("workoutLocation", parseLocation(e.target.value))}
-                    >
+                    <Select value={form.workoutLocation} onChange={(e) => update("workoutLocation", parseLocation(e.target.value))}>
                       <option value="home">Home</option>
                       <option value="gym">Gym</option>
                     </Select>
                   </Field>
 
                   <Field label="Workout time per day (minutes)">
-                    <Input
-                      placeholder="35"
-                      inputMode="numeric"
+                    <StepperInput
                       value={form.workoutMinutesPerDay}
-                      onChange={(e) => update("workoutMinutesPerDay", e.target.value)}
+                      onChange={(v) => update("workoutMinutesPerDay", v)}
+                      placeholder="35"
+                      min={10}
+                      max={120}
+                      step={5}
                     />
                   </Field>
-                </>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Footer buttons */}
-          <div className="flex items-center justify-between border-t border-slate-100 px-8 py-5">
+          {/* Footer */}
+          <div className="flex items-center justify-between border-t border-slate-100 px-10 py-6">
             <button
               onClick={onBack}
               className={cn(
-                "inline-flex items-center gap-2 text-sm",
-                canGoBack
-                  ? "text-slate-600 hover:text-slate-900"
-                  : "cursor-not-allowed text-slate-300"
+                "inline-flex items-center gap-2 text-sm font-medium",
+                canGoBack ? "text-slate-700 hover:text-slate-900" : "cursor-not-allowed text-slate-300"
               )}
               disabled={!canGoBack}
             >
@@ -471,9 +608,9 @@ export default function OnboardingWizard() {
 
             <button
               onClick={onNext}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 active:scale-[0.99]"
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600 active:scale-[0.99]"
             >
-              {step === steps.length - 1 ? "generate my plan" : "Next"}
+              {step === steps.length - 1 ? "Generate my plan" : "Next"}
               <span className="text-lg leading-none">›</span>
             </button>
           </div>

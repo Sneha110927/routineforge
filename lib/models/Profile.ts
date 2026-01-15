@@ -9,7 +9,8 @@ type Gender = "" | "male" | "female" | "other" | "prefer_not";
 type MealsPerDay = "3" | "4" | "5";
 
 export type ProfileDoc = {
-  userEmail: string; // simple auth for now
+  userEmail: string;
+
   heightCm: string;
   weightKg: string;
   age: string;
@@ -28,6 +29,12 @@ export type ProfileDoc = {
   experience: Experience;
   workoutLocation: Location;
   workoutMinutesPerDay: string;
+
+  // ✅ Settings preferences (new)
+  prefDarkMode: boolean;
+  prefDailyReminder: boolean;
+  prefWorkoutReminder: boolean;
+  prefMealReminder: boolean;
 
   createdAt: Date;
   updatedAt: Date;
@@ -55,9 +62,16 @@ const ProfileSchema = new Schema<ProfileDoc>(
     experience: { type: String, required: true },
     workoutLocation: { type: String, required: true },
     workoutMinutesPerDay: { type: String, required: true },
+
+    // ✅ Settings preferences fields
+    prefDarkMode: { type: Boolean, default: false },
+    prefDailyReminder: { type: Boolean, default: true },
+    prefWorkoutReminder: { type: Boolean, default: true },
+    prefMealReminder: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
 export const Profile =
-  (models.Profile as mongoose.Model<ProfileDoc>) || model<ProfileDoc>("Profile", ProfileSchema);
+  (models.Profile as mongoose.Model<ProfileDoc>) ||
+  model<ProfileDoc>("Profile", ProfileSchema);
