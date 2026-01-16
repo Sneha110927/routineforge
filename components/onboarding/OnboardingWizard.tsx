@@ -8,8 +8,9 @@ type Goal = "muscle_gain" | "weight_gain" | "fat_loss" | "maintenance";
 type Activity = "low" | "medium" | "high";
 type Experience = "beginner" | "intermediate" | "advanced";
 type Location = "home" | "gym";
-type Gender = "" | "male" | "female" | "other" | "prefer_not";
+type Gender = "male" | "female" | "other" | "prefer_not";
 type MealsPerDay = "3" | "4" | "5";
+type SleepSchedule = "early" | "moderate" | "night";
 
 type FormState = {
   heightCm: string;
@@ -21,9 +22,10 @@ type FormState = {
   workStart: string;
   workEnd: string;
   activityLevel: Activity;
+  sleepSchedule: SleepSchedule;
 
   dietPreference: DietPref;
-  allergies: string;
+  allergies: string; // mandatory (use "none" if not applicable)
   mealsPerDay: MealsPerDay;
 
   goal: Goal;
@@ -84,20 +86,6 @@ function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n));
-}
-
-function parseNumberOrDefault(v: string, def: number): number {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : def;
-}
-
-/**
- * StepperInput: custom +/- buttons like your screenshot (NOT browser number spinner).
- * - input is type="text" with numeric-only filter
- * - right side: two square buttons
- */
 function StepperInput({
   value,
   onChange,
@@ -116,16 +104,16 @@ function StepperInput({
   const num = Number(value);
   const base = Number.isFinite(num) ? num : min;
 
-  function clamp(n: number): number {
+  function clampLocal(n: number): number {
     return Math.max(min, Math.min(max, n));
   }
 
   function dec() {
-    onChange(String(clamp(base - step)));
+    onChange(String(clampLocal(base - step)));
   }
 
   function inc() {
-    onChange(String(clamp(base + step)));
+    onChange(String(clampLocal(base + step)));
   }
 
   return (
@@ -147,7 +135,6 @@ function StepperInput({
         className="pr-14"
       />
 
-      {/* Arrow buttons like native spinner */}
       <div className="absolute right-2 top-1/2 -translate-y-1/2">
         <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
           <button
@@ -172,7 +159,6 @@ function StepperInput({
     </div>
   );
 }
-
 
 function PillChoice({
   title,
@@ -227,31 +213,14 @@ function DietTile({
   );
 }
 
-// ---- strict parsers (no `any`) ----
-function parseGender(v: string): Gender {
-  if (v === "male" || v === "female" || v === "other" || v === "prefer_not") return v;
-  return "";
-}
-function parseMealsPerDay(v: string): MealsPerDay {
-  if (v === "3" || v === "4" || v === "5") return v;
-  return "4";
-}
-function parseGoal(v: string): Goal {
-  if (v === "muscle_gain" || v === "weight_gain" || v === "fat_loss" || v === "maintenance") return v;
-  return "muscle_gain";
-}
-function parseExperience(v: string): Experience {
-  if (v === "beginner" || v === "intermediate" || v === "advanced") return v;
-  return "beginner";
-}
-function parseLocation(v: string): Location {
-  if (v === "home" || v === "gym") return v;
-  return "home";
-}
 function getErrorMessage(err: unknown): string {
   if (err instanceof Error) return err.message;
   if (typeof err === "string") return err;
   return "Something went wrong";
+}
+
+function isValidTime(t: string): boolean {
+  return /^\d{2}:\d{2}$/.test(t);
 }
 
 export default function OnboardingWizard() {
@@ -262,15 +231,16 @@ export default function OnboardingWizard() {
     heightCm: "170",
     weightKg: "70",
     age: "30",
-    gender: "",
+    gender: "prefer_not",
 
-    profession: "Select your profession ",
+    profession: "",
     workStart: "10:30",
     workEnd: "20:00",
     activityLevel: "low",
+    sleepSchedule: "moderate",
 
     dietPreference: "veg",
-    allergies: "",
+    allergies: "none",
     mealsPerDay: "3",
 
     goal: "muscle_gain",
@@ -279,7 +249,10 @@ export default function OnboardingWizard() {
     workoutMinutesPerDay: "35",
   });
 
-  const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
+  const progress = useMemo(
+    () => Math.round(((step + 1) / steps.length) * 100),
+    [step]
+  );
   const canGoBack = step > 0;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -291,23 +264,34 @@ export default function OnboardingWizard() {
       if (!form.heightCm.trim()) return "Height is required";
       if (!form.weightKg.trim()) return "Weight is required";
       if (!form.age.trim()) return "Age is required";
+      if (!form.gender) return "Gender is required";
       return null;
     }
+
     if (step === 1) {
       if (!form.profession.trim()) return "Profession is required";
-      if (!form.workStart) return "Work start time is required";
-      if (!form.workEnd) return "Work end time is required";
+      if (!form.activityLevel) return "Activity level is required";
+      if (!form.sleepSchedule) return "Sleep schedule is required";
+      if (!form.workStart || !isValidTime(form.workStart)) return "Work start time is required";
+      if (!form.workEnd || !isValidTime(form.workEnd)) return "Work end time is required";
       return null;
     }
+
     if (step === 2) {
       if (!form.dietPreference) return "Diet type is required";
+      if (!form.allergies.trim()) return "Allergies/Restrictions is required (use 'none' if not applicable)";
       if (!form.mealsPerDay) return "Meals per day is required";
       return null;
     }
+
     if (step === 3) {
+      if (!form.goal) return "Goal is required";
+      if (!form.experience) return "Experience is required";
+      if (!form.workoutLocation) return "Workout location is required";
       if (!form.workoutMinutesPerDay.trim()) return "Workout minutes is required";
       return null;
     }
+
     return null;
   }
 
@@ -337,12 +321,13 @@ export default function OnboardingWizard() {
         body: JSON.stringify({ userEmail, ...form }),
       });
 
-      const data = (await res.json()) as unknown;
+      const text = await res.text();
+      const json = text ? (JSON.parse(text) as unknown) : null;
 
       if (!res.ok) {
         const msg =
-          typeof data === "object" && data !== null && "message" in data
-            ? String((data as { message: unknown }).message)
+          typeof json === "object" && json !== null && "message" in json
+            ? String((json as { message: unknown }).message)
             : "Failed to save profile";
         throw new Error(msg);
       }
@@ -378,7 +363,6 @@ export default function OnboardingWizard() {
 
   return (
     <div className="min-h-screen">
-      {/* Top bar */}
       <div className="border-b border-slate-100 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
@@ -393,65 +377,36 @@ export default function OnboardingWizard() {
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="mx-auto max-w-6xl px-6 pb-4">
           <div className="h-2 w-full rounded-full bg-emerald-100">
-            <div
-              className="h-2 rounded-full bg-emerald-600 transition-all"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-2 rounded-full bg-emerald-600 transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
       </div>
 
-      {/* Center content */}
       <div className="grid place-items-center px-4 py-14">
         <div className="w-full max-w-3xl rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="px-10 py-9">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-900">{heading}</h2>
             <p className="mt-2 text-sm text-slate-600">{subheading}</p>
 
-            {/* fields container */}
             <div className="mt-8 grid grid-cols-1 gap-6">
-              {/* STEP 0 */}
               {step === 0 && (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <Field label="Height (cm)">
-                    <StepperInput
-                      value={form.heightCm}
-                      onChange={(v) => update("heightCm", v)}
-                      placeholder="170"
-                      min={120}
-                      max={230}
-                      step={1}
-                    />
+                    <StepperInput value={form.heightCm} onChange={(v) => update("heightCm", v)} placeholder="170" min={120} max={230} />
                   </Field>
 
                   <Field label="Weight (kg)">
-                    <StepperInput
-                      value={form.weightKg}
-                      onChange={(v) => update("weightKg", v)}
-                      placeholder="70"
-                      min={30}
-                      max={200}
-                      step={1}
-                    />
+                    <StepperInput value={form.weightKg} onChange={(v) => update("weightKg", v)} placeholder="70" min={30} max={200} />
                   </Field>
 
                   <Field label="Age">
-                    <StepperInput
-                      value={form.age}
-                      onChange={(v) => update("age", v)}
-                      placeholder="30"
-                      min={10}
-                      max={90}
-                      step={1}
-                    />
+                    <StepperInput value={form.age} onChange={(v) => update("age", v)} placeholder="30" min={10} max={90} />
                   </Field>
 
-                  <Field label="Gender (Optional)">
-                    <Select value={form.gender} onChange={(e) => update("gender", parseGender(e.target.value))}>
-                      <option value="">Select gender</option>
+                  <Field label="Gender">
+                    <Select value={form.gender} onChange={(e) => update("gender", e.target.value as Gender)}>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="other">Other</option>
@@ -461,7 +416,6 @@ export default function OnboardingWizard() {
                 </div>
               )}
 
-              {/* STEP 1 */}
               {step === 1 && (
                 <div className="space-y-6">
                   <div className="space-y-2">
@@ -499,17 +453,15 @@ export default function OnboardingWizard() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-900">Sleep Schedule Preference</label>
-                    <Select defaultValue="">
-                      <option value="">Select sleep schedule</option>
-                      <option value="Early Bird (sleep by 10 PM)">Early Bird (sleep by 10 PM)</option>
-                      <option value="Moderate (sleep by 11-12 PM)">Moderate (sleep by 11-12 PM)</option>
-                      <option value="Night Owl (sleep after 12 AM)">Night Owl (sleep after 12 AM)</option>
+                    <Select value={form.sleepSchedule} onChange={(e) => update("sleepSchedule", e.target.value as SleepSchedule)}>
+                      <option value="early">Early Bird (sleep by 10 PM)</option>
+                      <option value="moderate">Moderate (sleep by 11-12 PM)</option>
+                      <option value="night">Night Owl (sleep after 12 AM)</option>
                     </Select>
                   </div>
                 </div>
               )}
 
-              {/* STEP 2 */}
               {step === 2 && (
                 <div className="space-y-6">
                   <div className="space-y-2">
@@ -524,24 +476,16 @@ export default function OnboardingWizard() {
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-900">Food Allergies or Restrictions</label>
-                    <div className="flex gap-3">
-                      <Input
-                        placeholder="e.g., peanuts, dairy"
-                        value={form.allergies}
-                        onChange={(e) => update("allergies", e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 active:scale-[0.99]"
-                      >
-                        Add
-                      </button>
-                    </div>
+                    <Input
+                      placeholder="Type 'none' if not applicable"
+                      value={form.allergies}
+                      onChange={(e) => update("allergies", e.target.value)}
+                    />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-sm font-semibold text-slate-900">Meals per Day</label>
-                    <Select value={form.mealsPerDay} onChange={(e) => update("mealsPerDay", parseMealsPerDay(e.target.value))}>
+                    <Select value={form.mealsPerDay} onChange={(e) => update("mealsPerDay", e.target.value as MealsPerDay)}>
                       <option value="3">3 meals</option>
                       <option value="4">4 meals</option>
                       <option value="5">5 meals</option>
@@ -550,11 +494,10 @@ export default function OnboardingWizard() {
                 </div>
               )}
 
-              {/* STEP 3 */}
               {step === 3 && (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   <Field label="Goal">
-                    <Select value={form.goal} onChange={(e) => update("goal", parseGoal(e.target.value))}>
+                    <Select value={form.goal} onChange={(e) => update("goal", e.target.value as Goal)}>
                       <option value="muscle_gain">Muscle gain</option>
                       <option value="weight_gain">Weight gain</option>
                       <option value="fat_loss">Fat loss</option>
@@ -563,7 +506,7 @@ export default function OnboardingWizard() {
                   </Field>
 
                   <Field label="Experience">
-                    <Select value={form.experience} onChange={(e) => update("experience", parseExperience(e.target.value))}>
+                    <Select value={form.experience} onChange={(e) => update("experience", e.target.value as Experience)}>
                       <option value="beginner">Beginner</option>
                       <option value="intermediate">Intermediate</option>
                       <option value="advanced">Advanced</option>
@@ -571,31 +514,23 @@ export default function OnboardingWizard() {
                   </Field>
 
                   <Field label="Workout location">
-                    <Select value={form.workoutLocation} onChange={(e) => update("workoutLocation", parseLocation(e.target.value))}>
+                    <Select value={form.workoutLocation} onChange={(e) => update("workoutLocation", e.target.value as Location)}>
                       <option value="home">Home</option>
                       <option value="gym">Gym</option>
                     </Select>
                   </Field>
 
                   <Field label="Workout time per day (minutes)">
-                    <StepperInput
-                      value={form.workoutMinutesPerDay}
-                      onChange={(v) => update("workoutMinutesPerDay", v)}
-                      placeholder="35"
-                      min={10}
-                      max={120}
-                      step={5}
-                    />
+                    <StepperInput value={form.workoutMinutesPerDay} onChange={(v) => update("workoutMinutesPerDay", v)} placeholder="35" min={10} max={120} step={5} />
                   </Field>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Footer */}
           <div className="flex items-center justify-between border-t border-slate-100 px-10 py-6">
             <button
-              onClick={onBack}
+              onClick={() => canGoBack && setStep((s) => s - 1)}
               className={cn(
                 "inline-flex items-center gap-2 text-sm font-medium",
                 canGoBack ? "text-slate-700 hover:text-slate-900" : "cursor-not-allowed text-slate-300"
