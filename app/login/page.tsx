@@ -83,8 +83,9 @@ export default function LoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pwd }),
       });
+const text = await res.text();
+const data = text ? (JSON.parse(text) as LoginResponse) : ({ ok: false, message: "Empty response from server" } as LoginResponse);
 
-      const data = (await res.json()) as LoginResponse;
 
       if (!res.ok || !data.ok) {
         const msg =

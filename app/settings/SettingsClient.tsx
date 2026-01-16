@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useActionState, useState } from "react";
+import React, { useEffect, useActionState, startTransition, useState } from "react";
 import Link from "next/link";
 import { Settings, User2, Bell, Shield, Sun } from "lucide-react";
 
@@ -334,11 +334,13 @@ function TopBar() {
 export default function SettingsClient() {
   const [view, runLoad] = useActionState(loadSettingsAction, { status: "boot" } as ViewState);
 
+ 
   useEffect(() => {
-    // ✅ localStorage only here
-    const email = localStorage.getItem("rf_email");
-    runLoad({ email });
-  }, [runLoad]);
+   const email = localStorage.getItem("rf_email");
+   startTransition(() => {
+     runLoad({ email });
+   });
+ }, [runLoad]);
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);

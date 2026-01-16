@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useActionState } from "react";
+import React, { useEffect, useActionState, startTransition } from "react";
 import Link from "next/link";
 import { LineChart } from "lucide-react";
 
@@ -93,11 +93,13 @@ function TopBar() {
 export default function ReportsClient() {
   const [view, runLoad] = useActionState(loadReportsAction, { status: "boot" } as ViewState);
 
-  useEffect(() => {
-    // ✅ localStorage only here (never during prerender)
-    const email = localStorage.getItem("rf_email");
+ useEffect(() => {
+  const email = localStorage.getItem("rf_email");
+  startTransition(() => {
     runLoad({ email });
-  }, [runLoad]);
+  });
+}, [runLoad]);
+
 
   return (
     <main className="min-h-screen bg-white">

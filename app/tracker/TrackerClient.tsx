@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useActionState, useState } from "react";
+import React, { useEffect, useActionState, startTransition, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Settings } from "lucide-react";
 
@@ -90,11 +90,12 @@ function InputCard({
 export default function TrackerClient() {
   const [view, runInit] = useActionState(initAction, { status: "boot" } as ViewState);
 
-  // ✅ localStorage only inside effect (safe for build)
-  useEffect(() => {
-    const email = localStorage.getItem("rf_email");
-    runInit({ email });
-  }, [runInit]);
+    useEffect(() => {
+     const email = localStorage.getItem("rf_email");
+     startTransition(() => {
+       runInit({ email }); 
+     });
+   }, [runInit]);
 
   const [weightKg, setWeightKg] = useState<string>("");
   const [workoutDone, setWorkoutDone] = useState(false);
