@@ -10,6 +10,7 @@ type ChatMsg = {
   role: Role;
   text: string;
   time: string;
+  isTyping?: boolean;
 };
 
 function nowHHMM(): string {
@@ -33,6 +34,16 @@ const QUICK = [
   "Best workout for beginners?",
   "Tips for better sleep?",
 ] as const;
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.2s]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.1s]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+    </div>
+  );
+}
 
 export default function RoutineForgeChatbot() {
   const [open, setOpen] = useState(false);
@@ -87,7 +98,17 @@ export default function RoutineForgeChatbot() {
       text: trimmed,
       time: nowHHMM(),
     };
-    setMessages((p) => [...p, userMsg]);
+
+    const typingId = uid();
+    const typingMsg: ChatMsg = {
+      id: typingId,
+      role: "assistant",
+      text: "",
+      time: nowHHMM(),
+      isTyping: true,
+    };
+
+    setMessages((p) => [...p, userMsg, typingMsg]);
 
     try {
       const res = await fetch("/api/chat", {
@@ -99,7 +120,9 @@ export default function RoutineForgeChatbot() {
       const raw = await res.text();
       let data: { ok: boolean; reply?: string; message?: string };
       try {
-        data = raw ? (JSON.parse(raw) as { ok: boolean; reply?: string; message?: string }) : { ok: false, message: "Empty response" };
+        data = raw
+          ? (JSON.parse(raw) as { ok: boolean; reply?: string; message?: string })
+          : { ok: false, message: "Empty response" };
       } catch {
         data = { ok: false, message: "Invalid response" };
       }
@@ -109,18 +132,26 @@ export default function RoutineForgeChatbot() {
           ? data.reply
           : data.message ?? "Sorry, I couldn’t answer that right now.";
 
-      const botMsg: ChatMsg = {
-        id: uid(),
-        role: "assistant",
-        text: replyText,
-        time: nowHHMM(),
-      };
-      setMessages((p) => [...p, botMsg]);
+      setMessages((p) =>
+        p.map((m) =>
+          m.id === typingId
+            ? { ...m, text: replyText, isTyping: false, time: nowHHMM() }
+            : m
+        )
+      );
     } catch {
-      setMessages((p) => [
-        ...p,
-        { id: uid(), role: "assistant", text: "Network error. Please try again.", time: nowHHMM() },
-      ]);
+      setMessages((p) =>
+        p.map((m) =>
+          m.id === typingId
+            ? {
+                ...m,
+                text: "Network error. Please try again.",
+                isTyping: false,
+                time: nowHHMM(),
+              }
+            : m
+        )
+      );
     } finally {
       setBusy(false);
     }
@@ -154,21 +185,21 @@ export default function RoutineForgeChatbot() {
                 </div>
                 <div className="leading-tight">
                   <p className="text-sm font-semibold">RoutineForge AI</p>
-                  <p className="text-xs opacity-90">Always here to help</p>
+                  <p className="text-xs opacity-90">
+                    {busy ? "Thinking..." : "Always here to help"}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  className="grid h-8 w-8 place-items-center rounded-xl hover:bg-white/15"
-                  aria-label="Close"
-                  onClick={() => setOpen(false)}
-                  title="Close"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              <button
+                type="button"
+                className="grid h-8 w-8 place-items-center rounded-xl hover:bg-white/15"
+                aria-label="Close"
+                onClick={() => setOpen(false)}
+                title="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
 
             {/* Body */}
@@ -177,7 +208,10 @@ export default function RoutineForgeChatbot() {
                 {messages.map((m) => (
                   <div
                     key={m.id}
-                    className={cn("mb-4 flex", m.role === "user" ? "justify-end" : "justify-start")}
+                    className={cn(
+                      "mb-4 flex",
+                      m.role === "user" ? "justify-end" : "justify-start"
+                    )}
                   >
                     {m.role === "assistant" ? (
                       <div className="mr-2 mt-1 grid h-8 w-8 place-items-center rounded-full bg-emerald-50 text-emerald-700">
@@ -194,9 +228,14 @@ export default function RoutineForgeChatbot() {
                             : "border border-slate-200 bg-white text-slate-800"
                         )}
                       >
-                        {m.text}
+                        {m.isTyping ? <TypingDots /> : m.text}
                       </div>
-                      <div className={cn("mt-1 text-[11px] text-slate-400", m.role === "user" ? "text-right" : "text-left")}>
+                      <div
+                        className={cn(
+                          "mt-1 text-[11px] text-slate-400",
+                          m.role === "user" ? "text-right" : "text-left"
+                        )}
+                      >
                         {m.time}
                       </div>
                     </div>
@@ -242,7 +281,9 @@ export default function RoutineForgeChatbot() {
                     disabled={!canSend}
                     className={cn(
                       "grid h-9 w-9 place-items-center rounded-xl",
-                      canSend ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-slate-200 text-slate-500"
+                      canSend
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-slate-200 text-slate-500"
                     )}
                     aria-label="Send"
                   >
