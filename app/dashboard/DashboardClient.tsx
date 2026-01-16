@@ -158,6 +158,33 @@ function TopNav() {
   );
 }
 
+function RecipeFinderBanner() {
+  return (
+    <Link
+      href="/recipe-finder"
+      className="mt-6 block rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-5"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-600 text-white">
+            👨‍🍳
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Recipe Finder</p>
+            <p className="mt-1 text-xs text-slate-600">
+              Have ingredients at home? Discover delicious recipes you can make right now!
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-emerald-600 px-5 py-3 text-xs font-semibold text-white">
+          Find Recipes
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function DashboardClient() {
   const [data, setData] = useState<PlanResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -222,6 +249,7 @@ export default function DashboardClient() {
               <p className="mt-1 text-sm text-slate-600">Here&#39;s your overview for today</p>
             </div>
 
+            {/* Highlights */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Card className="bg-gradient-to-r from-emerald-50 to-emerald-100">
                 <div className="flex items-center gap-4 p-5">
@@ -249,14 +277,40 @@ export default function DashboardClient() {
               </Card>
             </div>
 
+            {/* Quick actions */}
             <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-              <ActionCard href="/routine" icon={<Calendar size={18} />} title="Daily Routine" desc="View today&#39;s schedule" />
-              <ActionCard href="/meals" icon={<UtensilsCrossed size={18} />} title="Meal Plan" desc="Check your meals" />
-              <ActionCard href="/workout" icon={<Dumbbell size={18} />} title="Workout" desc="View exercise plan" />
-              <ActionCard href="/tracker" icon={<CheckCircle2 size={18} />} title="Log Today" desc="Track your progress" />
+              <ActionCard
+                href="/routine"
+                icon={<Calendar size={18} />}
+                title="Daily Routine"
+                desc="View today&#39;s schedule"
+              />
+              <ActionCard
+                href="/meals"
+                icon={<UtensilsCrossed size={18} />}
+                title="Meal Plan"
+                desc="Check your meals"
+              />
+              <ActionCard
+                href="/workout"
+                icon={<Dumbbell size={18} />}
+                title="Workout"
+                desc="View exercise plan"
+              />
+              <ActionCard
+                href="/tracker"
+                icon={<CheckCircle2 size={18} />}
+                title="Log Today"
+                desc="Track your progress"
+              />
             </div>
 
+            {/* ✅ Recipe Finder banner */}
+            <RecipeFinderBanner />
+
+            {/* 3-column content */}
             <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {/* Routine */}
               <Card>
                 <div className="flex items-center justify-between p-5">
                   <p className="text-sm font-semibold text-slate-900">Today&apos;s Routine</p>
@@ -280,6 +334,7 @@ export default function DashboardClient() {
                 </div>
               </Card>
 
+              {/* Meals */}
               <Card>
                 <div className="flex items-center justify-between p-5">
                   <p className="text-sm font-semibold text-slate-900">Today&apos;s Meals</p>
@@ -301,6 +356,7 @@ export default function DashboardClient() {
                 </div>
               </Card>
 
+              {/* Workout */}
               <Card>
                 <div className="flex items-center justify-between p-5">
                   <p className="text-sm font-semibold text-slate-900">Today&apos;s Workout</p>
@@ -332,6 +388,7 @@ export default function DashboardClient() {
               </Card>
             </div>
 
+            {/* CTA bottom */}
             <div className="mt-8 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-8 text-center">
               <p className="text-sm font-semibold text-slate-900">Ready to start your day?</p>
               <p className="mt-2 text-sm text-slate-600">

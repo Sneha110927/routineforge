@@ -54,6 +54,7 @@ export default function Footer() {
 
         <div className="mt-16 border-t border-zinc-200 pt-6 text-center text-sm text-zinc-500">
           © 2026 RoutineForge. All rights reserved.
+          Made by Sneha Jhawar ❤️.
         </div>
       </div>
     </footer>
