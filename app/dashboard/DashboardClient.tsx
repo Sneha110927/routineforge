@@ -172,7 +172,7 @@ function RecipeFinderBanner() {
           <div>
             <p className="text-sm font-semibold text-slate-900">Recipe Finder</p>
             <p className="mt-1 text-xs text-slate-600">
-              Have ingredients at home? Discover delicious recipes you can make right now!
+              Have ingredients at home? Discover healthy and delicious recipes you can make right now!
             </p>
           </div>
         </div>
