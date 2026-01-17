@@ -84,12 +84,12 @@ function TopBar() {
 export default function RoutineClient() {
   const [view, runLoad] = useActionState(loadRoutineAction, { status: "boot" } as ViewState);
 
- useEffect(() => {
-  const email = localStorage.getItem("rf_email");
-  startTransition(() => {
-    runLoad({ email });
-  });
-}, [runLoad]);
+  useEffect(() => {
+    const email = localStorage.getItem("rf_email");
+    startTransition(() => {
+      runLoad({ email });
+    });
+  }, [runLoad]);
 
 
   return (
@@ -185,18 +185,19 @@ function RoutineTimeline({ blocks }: { blocks: RoutineBlock[] }) {
               );
             })}
           </div>
+        </div>
 
-      <div className="mt-14 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
-  <p className="text-sm font-semibold text-slate-900">💡 Pro Tips</p>
-
-  <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700">
-    <li>Try to maintain consistent wake and sleep times, even on weekends</li>
-    <li>Take short 5-minute breaks every hour during work blocks</li>
-    <li>Avoid screens 30 minutes before bedtime for better sleep quality</li>
-    <li>Stay hydrated throughout the day - aim for 8 glasses of water</li>
-  </ul>
-</div>
-
+        {/* Pro Tips – OUTSIDE timeline */}
+        <div className="mt-14 pl-16">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+            <p className="font-semibold text-slate-900">💡 Pro Tips</p>
+            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-slate-700">
+              <li>Maintain consistent wake and sleep times</li>
+              <li>Take 5-minute breaks every hour</li>
+              <li>Avoid screens 30 minutes before bed</li>
+              <li>Drink at least 8 glasses of water daily</li>
+            </ul>
+          </div>
         </div>
       </div>
 
