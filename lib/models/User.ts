@@ -5,7 +5,10 @@ export type UserDoc = {
   email: string;
   passwordHash: string;
 
-  // ✅ REQUIRED for reset password
+  // ✅ Used to decide onboarding redirect
+  onboardingCompleted: boolean;
+
+  // ✅ Required for reset password
   resetPasswordToken?: string;
   resetPasswordExpiresAt?: Date;
 
@@ -19,7 +22,10 @@ const UserSchema = new Schema<UserDoc>(
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
 
-    // ✅ ADD THESE
+    // ✅ NEW: onboarding completion flag
+    onboardingCompleted: { type: Boolean, default: false },
+
+    // ✅ Reset password fields
     resetPasswordToken: { type: String },
     resetPasswordExpiresAt: { type: Date },
   },
@@ -27,5 +33,4 @@ const UserSchema = new Schema<UserDoc>(
 );
 
 export const User =
-  (models.User as mongoose.Model<UserDoc>) ||
-  model<UserDoc>("User", UserSchema);
+  (models.User as mongoose.Model<UserDoc>) || model<UserDoc>("User", UserSchema);

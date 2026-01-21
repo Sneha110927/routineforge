@@ -25,7 +25,7 @@ type FormState = {
   sleepSchedule: SleepSchedule;
 
   dietPreference: DietPref;
-  allergies: string; // mandatory (use "none" if not applicable)
+  allergies: string;
   mealsPerDay: MealsPerDay;
 
   goal: Goal;
@@ -45,13 +45,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
       <label className="text-sm font-semibold text-slate-900">{label}</label>
@@ -177,9 +171,7 @@ function PillChoice({
       onClick={onClick}
       className={cn(
         "w-full rounded-xl border px-4 py-4 text-left transition",
-        active
-          ? "border-emerald-600 bg-emerald-50"
-          : "border-slate-200 bg-white hover:bg-slate-50"
+        active ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50"
       )}
     >
       <p className="text-sm font-semibold text-slate-900">{title}</p>
@@ -203,9 +195,7 @@ function DietTile({
       onClick={onClick}
       className={cn(
         "w-full rounded-xl border px-4 py-4 text-center text-sm font-semibold transition",
-        active
-          ? "border-emerald-600 bg-emerald-50 text-emerald-700"
-          : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
+        active ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50"
       )}
     >
       {label}
@@ -223,36 +213,44 @@ function isValidTime(t: string): boolean {
   return /^\d{2}:\d{2}$/.test(t);
 }
 
+function Spinner() {
+  return (
+    <span
+      className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+      aria-hidden="true"
+    />
+  );
+}
+
 export default function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const [submitting, setSubmitting] = useState(false);
 
+  // ✅ No defaults — user fills everything
   const [form, setForm] = useState<FormState>({
-    heightCm: "170",
-    weightKg: "70",
-    age: "30",
+    heightCm: "",
+    weightKg: "",
+    age: "",
     gender: "prefer_not",
 
     profession: "",
-    workStart: "10:30",
-    workEnd: "20:00",
+    workStart: "",
+    workEnd: "",
     activityLevel: "low",
     sleepSchedule: "moderate",
 
     dietPreference: "veg",
-    allergies: "none",
+    allergies: "",
     mealsPerDay: "3",
 
     goal: "muscle_gain",
     experience: "beginner",
     workoutLocation: "home",
-    workoutMinutesPerDay: "35",
+    workoutMinutesPerDay: "",
   });
 
-  const progress = useMemo(
-    () => Math.round(((step + 1) / steps.length) * 100),
-    [step]
-  );
+  const progress = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const canGoBack = step > 0;
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -314,6 +312,7 @@ export default function OnboardingWizard() {
       return;
     }
 
+    setSubmitting(true);
     try {
       const res = await fetch("/api/profile", {
         method: "POST",
@@ -322,7 +321,12 @@ export default function OnboardingWizard() {
       });
 
       const text = await res.text();
-      const json = text ? (JSON.parse(text) as unknown) : null;
+      let json: unknown = null;
+      try {
+        json = text ? (JSON.parse(text) as unknown) : null;
+      } catch {
+        json = null;
+      }
 
       if (!res.ok) {
         const msg =
@@ -335,11 +339,13 @@ export default function OnboardingWizard() {
       router.replace("/dashboard");
     } catch (e: unknown) {
       alert(getErrorMessage(e));
+    } finally {
+      setSubmitting(false);
     }
   }
 
   function onBack() {
-    if (!canGoBack) return;
+    if (!canGoBack || submitting) return;
     setStep((s) => s - 1);
   }
 
@@ -530,12 +536,12 @@ export default function OnboardingWizard() {
 
           <div className="flex items-center justify-between border-t border-slate-100 px-10 py-6">
             <button
-              onClick={() => canGoBack && setStep((s) => s - 1)}
+              onClick={onBack}
+              disabled={!canGoBack || submitting}
               className={cn(
                 "inline-flex items-center gap-2 text-sm font-medium",
-                canGoBack ? "text-slate-700 hover:text-slate-900" : "cursor-not-allowed text-slate-300"
+                canGoBack && !submitting ? "text-slate-700 hover:text-slate-900" : "cursor-not-allowed text-slate-300"
               )}
-              disabled={!canGoBack}
             >
               <span className="text-lg leading-none">‹</span>
               Back
@@ -543,10 +549,23 @@ export default function OnboardingWizard() {
 
             <button
               onClick={onNext}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600 active:scale-[0.99]"
+              disabled={submitting}
+              className={cn(
+                "inline-flex items-center gap-3 rounded-xl px-5 py-3 text-sm font-semibold text-white",
+                submitting ? "bg-emerald-300 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600 active:scale-[0.99]"
+              )}
             >
-              {step === steps.length - 1 ? "Generate my plan" : "Next"}
-              <span className="text-lg leading-none">›</span>
+              {submitting ? (
+                <>
+                  <Spinner />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  {step === steps.length - 1 ? "Generate my plan" : "Next"}
+                  <span className="text-lg leading-none">›</span>
+                </>
+              )}
             </button>
           </div>
         </div>

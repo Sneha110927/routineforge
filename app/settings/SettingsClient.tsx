@@ -2,7 +2,7 @@
 
 import React, { useEffect, useActionState, startTransition, useState } from "react";
 import Link from "next/link";
-import { Settings, User2, Bell, Shield, Sun } from "lucide-react";
+import { Settings, User2, Bell, Shield, Sun, Moon } from "lucide-react";
 
 type DietPref = "veg" | "nonveg" | "eggetarian" | "vegan";
 type Goal = "muscle_gain" | "weight_gain" | "fat_loss" | "maintenance";
@@ -44,10 +44,7 @@ function getErrorMessage(err: unknown): string {
   return "Something went wrong";
 }
 
-async function loadSettingsAction(
-  _prev: ViewState,
-  payload: { email: string | null }
-): Promise<ViewState> {
+async function loadSettingsAction(_prev: ViewState, payload: { email: string | null }): Promise<ViewState> {
   const email = (payload.email ?? "").trim();
   if (!email) return { status: "noauth" };
 
@@ -93,11 +90,7 @@ async function saveSettings(email: string, data: SettingsOk): Promise<void> {
 }
 
 function IconBadge({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-emerald-700">
-      {children}
-    </div>
-  );
+  return <div className="grid h-10 w-10 place-items-center rounded-full bg-emerald-50 text-emerald-700">{children}</div>;
 }
 
 function SectionCard({
@@ -192,10 +185,7 @@ function ToggleRow({
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={[
-          "relative h-6 w-11 rounded-full transition",
-          checked ? "bg-emerald-600" : "bg-slate-200",
-        ].join(" ")}
+        className={["relative h-6 w-11 rounded-full transition", checked ? "bg-emerald-600" : "bg-slate-200"].join(" ")}
         aria-label={title}
       >
         <span
@@ -251,9 +241,7 @@ function PrivacyActions({ email }: { email: string }) {
   }
 
   async function deleteMyAccount() {
-    const ok = window.confirm(
-      "This will permanently delete your account, profile, and logs. Do you want to continue?"
-    );
+    const ok = window.confirm("This will permanently delete your account, profile, and logs. Do you want to continue?");
     if (!ok) return;
 
     setMsg(null);
@@ -270,6 +258,8 @@ function PrivacyActions({ email }: { email: string }) {
       if (!res.ok || !json.ok) throw new Error(json.message ?? "Failed to delete account");
 
       localStorage.removeItem("rf_email");
+      localStorage.removeItem("rf_theme");
+      document.documentElement.classList.remove("dark");
       window.location.href = "/login";
     } catch (e: unknown) {
       setMsg(getErrorMessage(e));
@@ -300,19 +290,35 @@ function PrivacyActions({ email }: { email: string }) {
       </button>
 
       {msg ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          {msg}
-        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{msg}</div>
       ) : null}
     </div>
   );
 }
 
-function TopBar() {
+/* -------------------- THEME (same as dashboard) -------------------- */
+
+type Theme = "light" | "dark";
+
+function readTheme(): Theme {
+  if (typeof window === "undefined") return "light";
+  const saved = window.localStorage.getItem("rf_theme");
+  if (saved === "dark" || saved === "light") return saved;
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? false;
+  return prefersDark ? "dark" : "light";
+}
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement;
+  if (theme === "dark") root.classList.add("dark");
+  else root.classList.remove("dark");
+}
+
+function TopBar({ theme, onToggleTheme }: { theme: Theme; onToggleTheme: () => void }) {
   return (
-    <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur">
+    <div className="sticky top-0 z-20 border-b border-slate-100 bg-white/90 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/dashboard" className="text-sm text-slate-600 hover:text-slate-900">
+        <Link href="/dashboard" className="text-sm text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
           ←
         </Link>
 
@@ -320,11 +326,17 @@ function TopBar() {
           <div className="grid h-9 w-9 place-items-center rounded-full bg-emerald-600 text-white">
             <span className="text-sm font-bold">◎</span>
           </div>
-          <span className="text-lg font-semibold text-slate-900">RoutineForge</span>
+          <span className="text-lg font-semibold text-slate-900 dark:text-slate-50">RoutineForge</span>
         </div>
 
-        <button className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-50" aria-label="Theme">
-          🌙
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-50 dark:hover:bg-slate-900"
+          aria-label="Toggle theme"
+          title="Toggle theme"
+        >
+          {theme === "dark" ? <Sun size={16} className="text-slate-700 dark:text-slate-200" /> : <Moon size={16} className="text-slate-700 dark:text-slate-200" />}
         </button>
       </div>
     </div>
@@ -334,13 +346,27 @@ function TopBar() {
 export default function SettingsClient() {
   const [view, runLoad] = useActionState(loadSettingsAction, { status: "boot" } as ViewState);
 
- 
+  const [theme, setTheme] = useState<Theme>("light");
+
   useEffect(() => {
-   const email = localStorage.getItem("rf_email");
-   startTransition(() => {
-     runLoad({ email });
-   });
- }, [runLoad]);
+    const t = readTheme();
+    setTheme(t);
+    applyTheme(t);
+  }, []);
+
+  function toggleTheme() {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+    localStorage.setItem("rf_theme", next);
+  }
+
+  useEffect(() => {
+    const email = localStorage.getItem("rf_email");
+    startTransition(() => {
+      runLoad({ email });
+    });
+  }, [runLoad]);
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -366,23 +392,23 @@ export default function SettingsClient() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <TopBar />
+    <main className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <TopBar theme={theme} onToggleTheme={toggleTheme} />
 
       <div className="mx-auto max-w-4xl px-6 py-10">
         {view.status === "boot" ? (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
             Loading settings…
           </div>
         ) : view.status === "noauth" ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
             No login found.{" "}
             <Link href="/login" className="font-semibold underline underline-offset-2">
               Go to login
             </Link>
           </div>
         ) : view.status === "error" ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
             {view.message}
           </div>
         ) : (
@@ -422,20 +448,20 @@ function SettingsContent({
   return (
     <>
       <div className="mb-8 text-center">
-        <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Settings</h1>
-        <p className="mt-2 text-sm text-slate-600">Manage your account and preferences</p>
+        <h1 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">Settings</h1>
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Manage your account and preferences</p>
       </div>
 
       <div className="space-y-6">
         <SectionCard icon={<User2 size={18} />} title="Account Information" subtitle="Your personal details">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <p className="mb-2 text-xs font-semibold text-slate-900">Name</p>
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Name</p>
               <Input value={local.account.name} onChange={() => {}} placeholder="" disabled />
-              <p className="mt-2 text-[11px] text-slate-500">Contact support to change your email address</p>
+              <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">Contact support to change your email address</p>
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold text-slate-900">Email</p>
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Email</p>
               <Input value={local.account.email} onChange={() => {}} placeholder="" disabled />
             </div>
           </div>
@@ -444,17 +470,17 @@ function SettingsContent({
         <SectionCard icon={<Settings size={18} />} title="Profile Settings" subtitle="Update your health and fitness goals">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <p className="mb-2 text-xs font-semibold text-slate-900">Current Weight (kg)</p>
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Current Weight (kg)</p>
               <Input value={local.profile.weightKg} onChange={(v) => updateProfile("weightKg", v)} placeholder="e.g., 70" />
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold text-slate-900">Height (cm)</p>
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Height (cm)</p>
               <Input value={local.profile.heightCm} onChange={(v) => updateProfile("heightCm", v)} placeholder="e.g., 170" />
             </div>
           </div>
 
           <div className="mt-6 border-t border-slate-100 pt-6">
-            <p className="mb-2 text-xs font-semibold text-slate-900">Fitness Goal</p>
+            <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Fitness Goal</p>
             <Select
               value={local.profile.goal}
               onChange={(v) => updateProfile("goal", v)}
@@ -466,7 +492,7 @@ function SettingsContent({
               ]}
             />
 
-            <p className="mb-2 mt-5 text-xs font-semibold text-slate-900">Diet Type</p>
+            <p className="mb-2 mt-5 text-xs font-semibold text-slate-900 dark:text-slate-50">Diet Type</p>
             <Select
               value={local.profile.dietPreference}
               onChange={(v) => updateProfile("dietPreference", v)}
@@ -481,7 +507,7 @@ function SettingsContent({
 
           <div className="mt-6 border-t border-slate-100 pt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <p className="mb-2 text-xs font-semibold text-slate-900">Workout Location</p>
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Workout Location</p>
               <Select
                 value={local.profile.workoutLocation}
                 onChange={(v) => updateProfile("workoutLocation", v)}
@@ -492,7 +518,7 @@ function SettingsContent({
               />
             </div>
             <div>
-              <p className="mb-2 text-xs font-semibold text-slate-900">Workout Duration</p>
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-slate-50">Workout Duration</p>
               <Select
                 value={local.profile.workoutMinutesPerDay}
                 onChange={(v) => updateProfile("workoutMinutesPerDay", v)}
@@ -516,7 +542,7 @@ function SettingsContent({
           </button>
 
           {toast ? (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
               {toast}
             </div>
           ) : null}

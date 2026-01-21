@@ -1,11 +1,9 @@
 @import "tailwindcss";
-@tailwind utilities;
 
 :root {
-  --rf-green: #14b87a; /* nice clean green */
+  --rf-green: #14b87a;
 }
 
-/* smooth fonts */
 body {
   font-feature-settings: "ss01" 1, "ss02" 1;
 }

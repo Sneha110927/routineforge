@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 export default function AuthCard({
   title,
@@ -12,12 +12,14 @@ export default function AuthCard({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="w-full max-w-5xl rounded-2xl border border-zinc-200 bg-white px-10 py-10 shadow-sm">
+    <div className="w-full max-w-5xl rounded-2xl border border-zinc-200 bg-white px-10 py-10 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl dark:text-slate-50">
           {title}
         </h1>
-        <p className="mt-2 text-sm text-zinc-600 sm:text-base">{subtitle}</p>
+        <p className="mt-2 text-sm text-zinc-600 sm:text-base dark:text-slate-300">
+          {subtitle}
+        </p>
       </div>
 
       <div className="mx-auto mt-10 w-full max-w-4xl">{children}</div>

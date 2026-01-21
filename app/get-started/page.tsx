@@ -92,13 +92,24 @@ export default function SignUpPage() {
 
     setLoading(true);
     try {
+      const emailNorm = email.trim().toLowerCase();
+
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password: pwd }),
+        body: JSON.stringify({ fullName, email: emailNorm, password: pwd }),
       });
 
-      const data = (await res.json()) as SignupResponse;
+      const text = await res.text();
+      let data: SignupResponse;
+
+      try {
+        data = text
+          ? (JSON.parse(text) as SignupResponse)
+          : ({ ok: false, message: "Empty response from server" } as SignupResponse);
+      } catch {
+        data = { ok: false, message: "Invalid response from server" };
+      }
 
       if (!res.ok || !data.ok) {
         const msg = "message" in data ? data.message : "Signup failed.";
@@ -106,6 +117,8 @@ export default function SignUpPage() {
       }
 
       localStorage.setItem("rf_email", data.user.email);
+
+      // ✅ New user always goes to onboarding
       router.replace("/onboarding");
     } catch (err: unknown) {
       setServerError(getMessage(err));
@@ -117,7 +130,6 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen bg-white px-6 py-14">
       <div className="mx-auto flex max-w-6xl items-center justify-center">
-        {/* Compact width like your login (center card) */}
         <div className="w-full max-w-md">
           <AuthCard
             title="Create your account"
