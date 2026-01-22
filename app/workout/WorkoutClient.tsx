@@ -661,14 +661,9 @@ export default function WorkoutClient() {
             <div className="mt-10 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-8 text-center">
               <p className="text-sm font-semibold text-slate-900">Tip</p>
               <p className="mt-2 text-sm text-slate-600">
-                Track completion in Log Today to build your streak. Consistency is the goal.
+                Breathe with the movement – Exhale on effort, inhale on return.
               </p>
-              <Link
-                href="/tracker"
-                className="mt-5 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                Log Today&apos;s Workout
-              </Link>
+
             </div>
 
             <div className="fixed bottom-6 right-6 grid h-10 w-10 place-items-center rounded-full bg-slate-900 text-white shadow-lg">
