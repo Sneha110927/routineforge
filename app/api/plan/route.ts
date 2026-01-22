@@ -18,25 +18,20 @@ type WorkoutItem = {
   items: Array<{ name: string; setsReps: string }>;
 };
 
-type RoutineBlock = {
-  start: string;
-  end: string;
-  icon: string;
-  title: string;
-  bullets: string[];
-};
+type RoutineBlock = { start: string; end: string; icon: string; title: string; bullets: string[] };
 
 type PlanOk = {
   ok: true;
   userEmail: string;
   greetingName: string;
-  currentBlock: { title: string; time: string };
+  currentBlock: { title: string; time: string }; // keep, but we'll override on UI
   streakDays: number;
-  routine: RoutineItem[];
-  meals: MealItem[];
-  workout: WorkoutItem;
-  routineBlocks: RoutineBlock[];
+  routine?: RoutineItem[];
+  meals?: MealItem[];
+  workout?: WorkoutItem;
+  routineBlocks?: RoutineBlock[]; // ✅ add this
 };
+
 
 type PlanFail = { ok: false; message: string };
 

@@ -26,6 +26,8 @@ type WorkoutItem = {
   items: Array<{ name: string; setsReps: string }>;
 };
 
+type RoutineBlock = { start: string; end: string; icon: string; title: string; bullets: string[] };
+
 type PlanOk = {
   ok: true;
   userEmail: string;
@@ -35,31 +37,59 @@ type PlanOk = {
   routine: RoutineItem[];
   meals: MealItem[];
   workout: WorkoutItem;
+  routineBlocks: RoutineBlock[];
 };
 
 type PlanFail = { ok: false; message: string };
 type PlanResponse = PlanOk | PlanFail;
 
+// Utility functions for time
+function toMin(t: string): number {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function toTime(m: number): string {
+  const hh = String(Math.floor(m / 60)).padStart(2, "0");
+  const mm = String(m % 60).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function nowMinutesLocal(): number {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+// Calculate current block from routine blocks
+function currentBlockFromBlocksLocal(blocks: RoutineBlock[]): { title: string; time: string } {
+  const now = nowMinutesLocal();
+  for (const b of blocks) {
+    const s = toMin(b.start);
+    const e = toMin(b.end);
+    if (now >= s && now < e) return { title: b.title, time: `${b.start} - ${b.end}` };
+  }
+
+  let next: RoutineBlock | null = null;
+  for (const b of blocks) {
+    const s = toMin(b.start);
+    if (s > now && (!next || s < toMin(next.start))) next = b;
+  }
+  if (next) return { title: next.title, time: `${next.start} - ${next.end}` };
+
+  const last = blocks.reduce((a, b) => (toMin(b.start) > toMin(a.start) ? b : a), blocks[0]);
+  return { title: last.title, time: `${last.start} - ${last.end}` };
+}
+
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div
-      className={[
-        "rounded-2xl border border-slate-200 bg-white shadow-sm",
-        "dark:border-slate-800 dark:bg-slate-900",
-        className ?? "",
-      ].join(" ")}
-    >
+    <div className={["rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900", className ?? ""].join(" ")}>
       {children}
     </div>
   );
 }
 
 function SmallIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300">
-      {children}
-    </div>
-  );
+  return <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300">{children}</div>;
 }
 
 function ActionCard({
@@ -200,7 +230,9 @@ function RecipeFinderBanner() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-emerald-600 px-5 py-3 text-xs font-semibold text-white">Find Recipes</div>
+        <div className="rounded-xl bg-emerald-600 px-5 py-3 text-xs font-semibold text-white">
+          Find Recipes
+        </div>
       </div>
     </Link>
   );
@@ -270,9 +302,7 @@ export default function DashboardClient() {
         ) : data && data.ok ? (
           <>
             <div className="mb-8">
-              <h1 className="text-3xl font-semibold tracking-tight">
-                {greeting}, {data.greetingName}
-              </h1>
+              <h1 className="text-3xl font-semibold tracking-tight">{greeting}, {data.greetingName}</h1>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                 Here&#39;s your overview for today
               </p>
