@@ -2,6 +2,7 @@
 
 import React, { useEffect, useActionState, startTransition, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Settings } from "lucide-react";
 
 type Mood = 1 | 2 | 3 | 4 | 5;
@@ -18,8 +19,16 @@ type ApiOk = { ok: true };
 type ApiFail = { ok: false; message: string };
 type ApiResponse = ApiOk | ApiFail;
 
-function todayYYYYMMDD(): string {
-  return new Date().toISOString().slice(0, 10);
+/** YYYY-MM-DD in IST (matches /api/reports) */
+function todayYYYYMMDD_IST(): string {
+  const IST_OFFSET_MIN = 330;
+  const d = new Date();
+  const istMs = d.getTime() + IST_OFFSET_MIN * 60_000;
+  const ist = new Date(istMs);
+  const y = ist.getUTCFullYear();
+  const m = String(ist.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(ist.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function getErrorMessage(err: unknown): string {
@@ -28,7 +37,7 @@ function getErrorMessage(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
-// ✅ action to set initial auth state without setState inside effect
+// ✅ init only (no setState in effect)
 async function initAction(_prev: ViewState, payload: { email: string | null }): Promise<ViewState> {
   const email = (payload.email ?? "").trim();
   return email ? { status: "ready", email } : { status: "noauth" };
@@ -51,9 +60,7 @@ function MoodOption({
       onClick={onClick}
       className={[
         "w-full rounded-xl border px-4 py-4 text-center transition",
-        selected
-          ? "border-emerald-600 bg-emerald-50"
-          : "border-slate-200 bg-white hover:bg-slate-50",
+        selected ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white hover:bg-slate-50",
       ].join(" ")}
     >
       <div className="text-2xl">{emoji}</div>
@@ -87,75 +94,66 @@ function InputCard({
   );
 }
 
+function toNumOrNull(v: string): number | null {
+  const t = v.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toWaterLitersFromGlasses(glasses: string): number | null {
+  const g = toNumOrNull(glasses);
+  if (g === null) return null;
+  // 1 glass ≈ 250ml => 0.25 L
+  return Math.round(g * 0.25 * 10) / 10;
+}
+
 export default function TrackerClient() {
-  const [view, runInit] = useActionState(initAction, { status: "boot" } as ViewState);
+  const router = useRouter();
 
-    useEffect(() => {
-     const email = localStorage.getItem("rf_email");
-     startTransition(() => {
-       runInit({ email }); 
-     });
-   }, [runInit]);
+  const [initView, runInit] = useActionState(initAction, { status: "boot" } as ViewState);
 
-  const [weightKg, setWeightKg] = useState<string>("");
+  // local UI state (normal setState is fine)
+  const [view, setView] = useState<ViewState>({ status: "boot" });
+
+  // sync init -> view (this is NOT the cascading issue; this is fine)
+  useEffect(() => {
+    setView(initView);
+  }, [initView]);
+
+  // init auth once
+  useEffect(() => {
+    const email = localStorage.getItem("rf_email");
+    startTransition(() => {
+      runInit({ email });
+    });
+  }, [runInit]);
+
+  // form
+  const [weightKg, setWeightKg] = useState<string>(""); // ✅ no default number
   const [workoutDone, setWorkoutDone] = useState(false);
   const [mealsPct, setMealsPct] = useState<number>(75);
-  const [waterGlasses, setWaterGlasses] = useState<string>("8");
-  const [sleepHours, setSleepHours] = useState<string>("7");
+  const [waterGlasses, setWaterGlasses] = useState<string>(""); // ✅ no default number
+  const [sleepHours, setSleepHours] = useState<string>(""); // ✅ no default number
   const [mood, setMood] = useState<Mood>(3);
   const [notes, setNotes] = useState("");
 
   async function saveLog() {
     if (view.status !== "ready" && view.status !== "saved" && view.status !== "error") return;
+
     const email = view.email;
-
-    // move to saving (not inside effect, allowed)
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-    (view as unknown); // no-op to keep ts stable
-
-    // useActionState is for init only; local UI state can use local set via runInit not needed
-    // We’ll simply rely on fetch + reload-ish message by using window state update through initAction is not needed.
-    // Instead we keep a small local state change using runInit is not appropriate.
-    // We'll keep saving state via a local setter pattern by reusing initAction not possible.
-  }
-
-  // We need a way to change view to saving/saved/error without setState in effects.
-  // setState is fine outside effects, so we use a separate local setter:
-  const [localView, setLocalView] = useState<ViewState>({ status: "boot" });
-
-  // Sync localView from view (once init completes)
-  useEffect(() => {
-    if (view.status === "ready" || view.status === "noauth") setLocalView(view);
-    if (view.status === "boot") setLocalView(view);
-  }, [view]);
-
-  async function saveLogReal() {
-    if (localView.status !== "ready" && localView.status !== "saved" && localView.status !== "error") return;
-    const email = localView.email;
-
-    setLocalView({ status: "saving", email });
+    setView({ status: "saving", email });
 
     try {
-      const toNumOrNull = (v: string): number | null => {
-        const t = v.trim();
-        if (!t) return null;
-        const n = Number(t);
-        return Number.isFinite(n) ? n : null;
-      };
-
-      const waterLiters = (() => {
-        const g = toNumOrNull(waterGlasses);
-        if (g === null) return null;
-        return Math.round(g * 0.25 * 10) / 10; // 1 glass ≈ 0.25L
-      })();
-
       const payload = {
         userEmail: email,
-        date: todayYYYYMMDD(),
+        date: todayYYYYMMDD_IST(), // ✅ match reports IST
+
         weightKg: toNumOrNull(weightKg),
-        waterLiters,
+        waterLiters: toWaterLitersFromGlasses(waterGlasses),
         sleepHours: toNumOrNull(sleepHours),
         steps: null as number | null,
+
         workoutDone,
         mealsFollowedPct: Math.max(0, Math.min(100, Math.round(mealsPct))),
         mood,
@@ -168,20 +166,30 @@ export default function TrackerClient() {
         body: JSON.stringify(payload),
       });
 
-      const json = (await res.json()) as ApiResponse;
+      const text = await res.text();
+      let json: ApiResponse;
+
+      try {
+        json = text ? (JSON.parse(text) as ApiResponse) : ({ ok: false, message: "Empty response" } as ApiResponse);
+      } catch {
+        json = { ok: false, message: "Invalid server response" };
+      }
 
       if (!res.ok || !json.ok) {
         const msg = !json.ok ? json.message : "Failed to save";
         throw new Error(msg);
       }
 
-      setLocalView({ status: "saved", email });
+      setView({ status: "saved", email });
+
+      // ✅ go back to dashboard after save
+      setTimeout(() => router.replace("/dashboard"), 600);
     } catch (err: unknown) {
-      setLocalView({ status: "error", email: localView.email, message: getErrorMessage(err) });
+      setView({ status: "error", email, message: getErrorMessage(err) });
     }
   }
 
-  if (localView.status === "boot") {
+  if (view.status === "boot") {
     return (
       <main className="min-h-screen bg-white px-6 py-10">
         <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-700">
@@ -191,7 +199,7 @@ export default function TrackerClient() {
     );
   }
 
-  if (localView.status === "noauth") {
+  if (view.status === "noauth") {
     return (
       <main className="min-h-screen bg-white px-6 py-10">
         <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
@@ -219,29 +227,16 @@ export default function TrackerClient() {
             <span className="text-lg font-semibold text-slate-900">RoutineForge</span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-50" aria-label="Theme">
-              🌙
-            </button>
-            <Link
-              href="/settings"
-              className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-50"
-              aria-label="Settings"
-            >
-              <Settings size={16} className="text-slate-600" />
-            </Link>
-          </div>
+          <Link href="/settings" className="grid h-9 w-9 place-items-center rounded-xl hover:bg-slate-50" aria-label="Settings">
+            <Settings size={16} className="text-slate-600" />
+          </Link>
         </div>
       </div>
 
       <div className="mx-auto max-w-3xl px-6 py-10">
         <div className="text-center">
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
-            Log Today&apos;s Progress
-          </h1>
-          <p className="mt-2 text-sm text-slate-600">
-            Track your daily metrics to build consistency and see results
-          </p>
+          <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Log Today&apos;s Progress</h1>
+          <p className="mt-2 text-sm text-slate-600">Track your daily metrics to build consistency and see results</p>
         </div>
 
         <div className="mt-10 space-y-6">
@@ -264,9 +259,7 @@ export default function TrackerClient() {
                 onClick={() => setWorkoutDone((s) => !s)}
                 className={[
                   "grid h-7 w-7 place-items-center rounded border",
-                  workoutDone
-                    ? "border-emerald-600 bg-emerald-600 text-white"
-                    : "border-slate-200 bg-slate-50 text-slate-700",
+                  workoutDone ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-slate-50 text-slate-700",
                 ].join(" ")}
                 aria-label="Workout done"
               >
@@ -274,9 +267,7 @@ export default function TrackerClient() {
               </button>
             }
           >
-            <div className="text-xs text-slate-500">
-              {workoutDone ? "Great job! ✅" : "Mark when completed."}
-            </div>
+            <div className="text-xs text-slate-500">{workoutDone ? "Great job! ✅" : "Mark when completed."}</div>
           </InputCard>
 
           <InputCard title="Meals Followed (%)" subtitle="How well did you stick to your meal plan today?">
@@ -338,26 +329,24 @@ export default function TrackerClient() {
 
           <button
             type="button"
-            onClick={saveLogReal}
-            disabled={localView.status === "saving"}
+            onClick={saveLog}
+            disabled={view.status === "saving"}
             className="w-full rounded-xl bg-emerald-600 px-5 py-4 text-sm font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-300"
           >
             <span className="inline-flex items-center gap-2">
               <CheckCircle2 size={16} />
-              {localView.status === "saving" ? "Saving..." : "Save Today’s Progress"}
+              {view.status === "saving" ? "Saving..." : "Save Today’s Progress"}
             </span>
           </button>
 
-          {localView.status === "saved" ? (
+          {view.status === "saved" ? (
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700">
-              Saved successfully.
+              ✅ Saved successfully. Redirecting…
             </div>
           ) : null}
 
-          {localView.status === "error" ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-              {localView.message}
-            </div>
+          {view.status === "error" ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">{view.message}</div>
           ) : null}
 
           <div className="rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 px-6 py-8 text-center">
@@ -367,10 +356,6 @@ export default function TrackerClient() {
             </p>
           </div>
         </div>
-      </div>
-
-      <div className="fixed bottom-6 right-6 grid h-10 w-10 place-items-center rounded-full bg-slate-900 text-white shadow-lg">
-        ?
       </div>
     </main>
   );
