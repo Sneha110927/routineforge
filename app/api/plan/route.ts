@@ -30,7 +30,7 @@ type PlanOk = {
   currentBlock: { title: string; time: string };
   streakDays: number;
   routine: RoutineItem[];
-  meals: MealItem[];
+  meals: MealItem[]; // ✅ will now be 3/4/5 based on profile
   workout: WorkoutItem;
   routineBlocks: RoutineBlock[];
 };
@@ -39,7 +39,7 @@ type PlanFail = { ok: false; message: string };
 
 /* ===================== TIME HELPERS (INDIA / IST) ===================== */
 
-const IST_OFFSET_MIN = 330; // +05:30
+const IST_OFFSET_MIN = 330;
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
@@ -63,17 +63,14 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
-// Current IST minutes-of-day
 function nowMinIST(): number {
   const now = new Date();
   const utcMin = now.getUTCHours() * 60 + now.getUTCMinutes();
   return (utcMin + IST_OFFSET_MIN + 1440) % 1440;
 }
 
-// Current IST date "YYYY-MM-DD"
 function istYYYYMMDD(d: Date = new Date()): string {
-  const utcMs = d.getTime();
-  const istMs = utcMs + IST_OFFSET_MIN * 60_000;
+  const istMs = d.getTime() + IST_OFFSET_MIN * 60_000;
   const ist = new Date(istMs);
   const y = ist.getUTCFullYear();
   const m = ist.getUTCMonth() + 1;
@@ -83,7 +80,7 @@ function istYYYYMMDD(d: Date = new Date()): string {
 
 function prevDayIST(yyyyMmDd: string): string {
   const [y, m, d] = yyyyMmDd.split("-").map(Number);
-  const utc = Date.UTC(y, (m ?? 1) - 1, d ?? 1); // treat as UTC date
+  const utc = Date.UTC(y, (m ?? 1) - 1, d ?? 1);
   const prev = new Date(utc - 24 * 60 * 60 * 1000);
   const yy = prev.getUTCFullYear();
   const mm = prev.getUTCMonth() + 1;
@@ -104,43 +101,117 @@ const parseExp = (v: unknown): Experience =>
 
 const parseLoc = (v: unknown): Location => (v === "home" || v === "gym" ? v : "home");
 
-/* ===================== MEALS ===================== */
-
-function calories(_diet: DietPref, goal: Goal) {
-  const base = goal === "fat_loss" ? 1700 : goal === "maintenance" ? 2000 : 2400;
-  return {
-    breakfast: Math.round(base * 0.25),
-    lunch: Math.round(base * 0.35),
-    dinner: Math.round(base * 0.3),
-  };
+function parseMealsPerDay(v: unknown): 3 | 4 | 5 {
+  const n = Number(v);
+  if (n === 3 || n === 4 || n === 5) return n;
+  // Profile might store as string "3"/"4"/"5"
+  if (v === "3") return 3;
+  if (v === "4") return 4;
+  if (v === "5") return 5;
+  return 3;
 }
 
-function mealTemplates(diet: DietPref, goal: Goal) {
-  if (diet !== "nonveg") {
-    return goal === "fat_loss"
-      ? [
-          { name: "Breakfast", desc: "Moong dal chilla + curd / tofu dip" },
-          { name: "Lunch", desc: "Dal + salad + 2 rotis (or quinoa) + sabzi" },
-          { name: "Dinner", desc: "Paneer/tofu bhurji + veggies + light roti" },
-        ]
-      : [
-          { name: "Breakfast", desc: "Oats + fruits + nuts (add milk/curd or soy milk)" },
-          { name: "Lunch", desc: "Rajma/chole + rice + salad + curd (optional)" },
-          { name: "Dinner", desc: "Paneer/tofu + veggies + 2 rotis" },
-        ];
+/* ===================== MEALS ===================== */
+
+/**
+ * Total calories baseline (you can refine later).
+ * We will distribute across 3/4/5 meals.
+ */
+function totalCalories(_diet: DietPref, goal: Goal): number {
+  const base = goal === "fat_loss" ? 1700 : goal === "maintenance" ? 2000 : 2400;
+  return base;
+}
+
+/**
+ * Build meal templates based on mealsPerDay.
+ * - Always returns EXACT count: 3 / 4 / 5
+ * - Indian-friendly
+ * - Goal-aware
+ */
+function mealTemplates(diet: DietPref, goal: Goal, mealsPerDay: 3 | 4 | 5): Array<{ name: string; desc: string }> {
+  const isVeg = diet !== "nonveg";
+  const isLoss = goal === "fat_loss";
+
+  const breakfast = isVeg
+    ? isLoss
+      ? "Moong dal chilla + curd/tofu dip"
+      : "Oats + fruits + nuts (milk/curd/soy)"
+    : isLoss
+    ? "Egg omelette + fruit"
+    : "Eggs + oats + fruit";
+
+  const lunch = isVeg
+    ? isLoss
+      ? "Dal + salad + 2 rotis (or quinoa) + sabzi"
+      : "Rajma/chole + rice + salad + curd (optional)"
+    : isLoss
+    ? "Grilled chicken/fish + salad + small rice/roti"
+    : "Chicken + rice + veggies";
+
+  const dinner = isVeg
+    ? isLoss
+      ? "Paneer/tofu bhurji + veggies + light roti"
+      : "Paneer/tofu + veggies + 2 rotis"
+    : isLoss
+    ? "Lean chicken + veggies + light roti"
+    : "Fish/chicken + veggies + roti";
+
+  const snack1 = isVeg
+    ? "Fruit + roasted chana / buttermilk"
+    : "Fruit + yogurt / boiled eggs (optional)";
+
+  const snack2 = isVeg
+    ? "Sprouts / protein smoothie (low sugar)"
+    : "Protein smoothie / nuts (portion controlled)";
+
+  if (mealsPerDay === 3) {
+    return [
+      { name: "Breakfast", desc: breakfast },
+      { name: "Lunch", desc: lunch },
+      { name: "Dinner", desc: dinner },
+    ];
   }
 
-  return goal === "fat_loss"
-    ? [
-        { name: "Breakfast", desc: "Egg omelette + fruit" },
-        { name: "Lunch", desc: "Grilled chicken/fish + salad + small rice/roti" },
-        { name: "Dinner", desc: "Lean chicken + veggies + light roti" },
-      ]
-    : [
-        { name: "Breakfast", desc: "Eggs + oats + fruits" },
-        { name: "Lunch", desc: "Chicken + rice + veggies" },
-        { name: "Dinner", desc: "Fish/chicken + veggies + roti" },
-      ];
+  if (mealsPerDay === 4) {
+    return [
+      { name: "Breakfast", desc: breakfast },
+      { name: "Lunch", desc: lunch },
+      { name: "Evening Snack", desc: snack1 },
+      { name: "Dinner", desc: dinner },
+    ];
+  }
+
+  // 5 meals
+  return [
+    { name: "Breakfast", desc: breakfast },
+    { name: "Mid-morning Snack", desc: snack1 },
+    { name: "Lunch", desc: lunch },
+    { name: "Evening Snack", desc: snack2 },
+    { name: "Dinner", desc: dinner },
+  ];
+}
+
+/**
+ * Distribute calories across meal count.
+ * Returns kcal per meal in same order as templates.
+ */
+function distributeCalories(total: number, mealsPerDay: 3 | 4 | 5): number[] {
+  // Simple, realistic splits:
+  // 3 meals: 25% / 40% / 35%
+  // 4 meals: 25% / 35% / 15% / 25%
+  // 5 meals: 22% / 10% / 35% / 13% / 20%
+  const w =
+    mealsPerDay === 3
+      ? [0.25, 0.4, 0.35]
+      : mealsPerDay === 4
+      ? [0.25, 0.35, 0.15, 0.25]
+      : [0.22, 0.1, 0.35, 0.13, 0.2];
+
+  const raw = w.map((x) => Math.round(total * x));
+  // Fix rounding drift
+  const drift = total - raw.reduce((a, b) => a + b, 0);
+  raw[raw.length - 1] = raw[raw.length - 1] + drift;
+  return raw;
 }
 
 /* ===================== WORKOUT ===================== */
@@ -173,7 +244,7 @@ function buildWorkout(goal: Goal, exp: Experience, loc: Location, mins: number):
 }
 
 /* ===================== ROUTINE LIST (DASHBOARD) ===================== */
-/** This is only used for the small list cards on dashboard, not for "current block". */
+
 function buildRoutineList(workStart: string, workoutTime: string): RoutineItem[] {
   return [
     { time: toTime(Math.max(6 * 60, toMin(workStart) - 240)), title: "Wake Up & Stretch", icon: "🌅" },
@@ -184,69 +255,50 @@ function buildRoutineList(workStart: string, workoutTime: string): RoutineItem[]
   ];
 }
 
-/* ===================== ROUTINE BLOCKS (TIMELINE) ===================== */
+/* ===================== ROUTINE BLOCKS ===================== */
 
 function pushBlock(arr: RoutineBlock[], start: number, end: number, icon: string, title: string, bullets: string[]) {
   if (end <= start) return;
   arr.push({ start: toTime(start), end: toTime(end), icon, title, bullets });
 }
 
-/**
- * Dynamic routine blocks built around user's workStart/workEnd in IST.
- * - Handles early/late shifts
- * - Splits work around lunch in a realistic way
- * - Ensures no invalid overlaps / backwards times
- */
 function buildRoutineBlocks(params: { workStart: string; workEnd: string; workoutMinutes: number }): RoutineBlock[] {
   const ws = toMin(params.workStart);
   const we = toMin(params.workEnd);
-
-  // If end < start, assume overnight shift (add 24h to end)
   const weAbs = we < ws ? we + 1440 : we;
 
-  // Lunch around midpoint but clamp to 12:00–14:30 (IST)
   const mid = Math.round((ws + weAbs) / 2);
   const lunchStart = clamp(mid, 12 * 60, 14 * 60 + 30);
   const lunchEnd = lunchStart + 45;
 
-  // Wake up: 2.5h before work, clamp to 05:30–09:00
   const wakeStart = clamp(ws - 150, 5 * 60 + 30, 9 * 60);
   const wakeEnd = wakeStart + 20;
 
-  // Short meditation + prep
   const medStart = wakeEnd;
   const medEnd = medStart + 15;
 
-  // Breakfast: around 60–90 min before work
   const breakfastStart = clamp(ws - 75, medEnd, ws - 30);
   const breakfastEnd = breakfastStart + 25;
 
-  // Work block 1: from work start to lunch-10
   const work1Start = ws;
   const work1End = Math.max(work1Start + 60, lunchStart - 10);
 
-  // Work block 2: from lunchEnd+10 to work end
   const work2Start = Math.min(lunchEnd + 10, weAbs - 20);
   const work2End = weAbs;
 
-  // Snack: right after work
   const snackStart = work2End;
   const snackEnd = snackStart + 25;
 
-  // Workout: 30 min after work, duration based on user
   const wDur = clamp(params.workoutMinutes || 35, 20, 90);
   const workoutStart = work2End + 30;
   const workoutEnd = workoutStart + wDur;
 
-  // Dinner: 45–75 min after workout
   const dinnerStart = workoutEnd + 60;
   const dinnerEnd = dinnerStart + 40;
 
-  // Wind down: 45 min
   const windStart = dinnerEnd + 30;
   const windEnd = windStart + 45;
 
-  // Sleep: fixed 30 min block (bedtime routine)
   const sleepStart = windEnd + 30;
   const sleepEnd = sleepStart + 30;
 
@@ -256,7 +308,6 @@ function buildRoutineBlocks(params: { workStart: string; workEnd: string; workou
   pushBlock(blocks, medStart, medEnd, "🧘", "Morning Meditation", ["Breathing", "Mindfulness"]);
   pushBlock(blocks, breakfastStart, breakfastEnd, "☕", "Breakfast", ["Healthy meal", "Plan day"]);
 
-  // If lunch is before work starts (edge), skip splitting work and do single work block
   if (lunchStart <= ws) {
     pushBlock(blocks, ws, weAbs, "💼", "Work Block", ["Focus", "Deep work"]);
   } else {
@@ -271,22 +322,18 @@ function buildRoutineBlocks(params: { workStart: string; workEnd: string; workou
   pushBlock(blocks, windStart, windEnd, "📖", "Wind Down", ["Screen-free time", "Relaxation"]);
   pushBlock(blocks, sleepStart, sleepEnd, "🛏️", "Sleep", ["Wind down", "7–8 hrs sleep"]);
 
-  // Convert any times beyond 24h back to HH:MM display
-  // (we already toTime() in pushBlock which wraps mod 1440)
   return blocks;
 }
 
-/* ===================== CURRENT BLOCK (FROM TIMELINE IN IST) ===================== */
+/* ===================== CURRENT BLOCK ===================== */
 
 function currentBlockFromBlocksIST(blocks: RoutineBlock[]): { title: string; time: string } {
   const now = nowMinIST();
 
-  // Find active (including possible overnight shift blocks if any, but we keep in 0..1440 display)
   for (const b of blocks) {
     const s = toMin(b.start);
     const e = toMin(b.end);
 
-    // Handle blocks that wrap midnight (e < s)
     if (e < s) {
       if (now >= s || now < e) return { title: b.title, time: `${b.start} - ${b.end}` };
     } else {
@@ -294,21 +341,18 @@ function currentBlockFromBlocksIST(blocks: RoutineBlock[]): { title: string; tim
     }
   }
 
-  // If no active, pick next upcoming
   let next: RoutineBlock | null = null;
   for (const b of blocks) {
     const s = toMin(b.start);
-    const isAfter = s > now;
-    if (isAfter && (!next || s < toMin(next.start))) next = b;
+    if (s > now && (!next || s < toMin(next.start))) next = b;
   }
   if (next) return { title: next.title, time: `${next.start} - ${next.end}` };
 
-  // else last block of day
   const last = blocks.reduce((a, b) => (toMin(b.start) > toMin(a.start) ? b : a), blocks[0]);
   return { title: last.title, time: `${last.start} - ${last.end}` };
 }
 
-/* ===================== STREAK (IST DATE) ===================== */
+/* ===================== STREAK (IST) ===================== */
 
 async function computeStreakDaysIST(userEmail: string): Promise<number> {
   const logs = await DailyLog.find({ userEmail })
@@ -324,7 +368,7 @@ async function computeStreakDaysIST(userEmail: string): Promise<number> {
   }
 
   let streak = 0;
-  let day = istYYYYMMDD(); // today in IST
+  let day = istYYYYMMDD();
 
   while (set.has(day)) {
     streak++;
@@ -358,21 +402,23 @@ export async function GET(req: Request) {
   const exp = parseExp(profile.experience);
   const loc = parseLoc(profile.workoutLocation);
 
-  const cals = calories(diet, goal);
-  const baseMeals = mealTemplates(diet, goal);
+  const mealsPerDay = parseMealsPerDay(profile.mealsPerDay);
 
-  const meals: MealItem[] = [
-    { ...baseMeals[0], kcal: cals.breakfast },
-    { ...baseMeals[1], kcal: cals.lunch },
-    { ...baseMeals[2], kcal: cals.dinner },
-  ];
+  const total = totalCalories(diet, goal);
+  const templates = mealTemplates(diet, goal, mealsPerDay);
+  const kcalParts = distributeCalories(total, mealsPerDay);
+
+  const meals: MealItem[] = templates.map((t, idx) => ({
+    name: t.name,
+    desc: t.desc,
+    kcal: kcalParts[idx] ?? Math.round(total / mealsPerDay),
+  }));
 
   const workout = buildWorkout(goal, exp, loc, Number(profile.workoutMinutesPerDay));
 
   const workStart = String(profile.workStart ?? "10:30");
   const workEnd = String(profile.workEnd ?? "20:00");
 
-  // workout time suggestion: 30 min after workEnd (display in 24h)
   const workoutTime = toTime(toMin(workEnd) + 30);
 
   const routineBlocks = buildRoutineBlocks({
@@ -382,14 +428,13 @@ export async function GET(req: Request) {
   });
 
   const routine = buildRoutineList(workStart, workoutTime);
-
   const streakDays = await computeStreakDaysIST(email);
 
   const resp: PlanOk = {
     ok: true,
     userEmail: email,
     greetingName: email.split("@")[0],
-    currentBlock: currentBlockFromBlocksIST(routineBlocks), // ✅ IST-correct and based on timeline
+    currentBlock: currentBlockFromBlocksIST(routineBlocks),
     streakDays,
     routine,
     meals,
